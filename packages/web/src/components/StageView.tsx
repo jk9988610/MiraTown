@@ -10,6 +10,9 @@ export function StageView({ snapshot }: StageViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<MiraStage | null>(null);
+  const snapshotRef = useRef<RuntimeSnapshot | null>(null);
+
+  snapshotRef.current = snapshot;
 
   useEffect(() => {
     const host = hostRef.current;
@@ -18,18 +21,22 @@ export function StageView({ snapshot }: StageViewProps) {
 
     const stage = new MiraStage();
     stageRef.current = stage;
-    void stage.mount(host, overlay);
+
+    void stage.mount(host, overlay).then(() => {
+      if (stageRef.current !== stage) return;
+      const pending = snapshotRef.current;
+      if (pending) stage.update(pending);
+    });
 
     return () => {
       stage.destroy();
-      stageRef.current = null;
+      if (stageRef.current === stage) stageRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (snapshot && stageRef.current) {
-      stageRef.current.update(snapshot);
-    }
+    if (!snapshot || !stageRef.current?.ready) return;
+    stageRef.current.update(snapshot);
   }, [snapshot]);
 
   return (
