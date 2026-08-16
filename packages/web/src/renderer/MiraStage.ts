@@ -40,6 +40,7 @@ export class MiraStage {
   private app: Application | null = null;
   private world = new Container();
   private groundLayer = new Container();
+  private puddleLayer = new Container();
   private propLayer = new Container();
   private actorLayer = new Container();
   private rainLayer = new Container();
@@ -71,6 +72,7 @@ export class MiraStage {
     container.replaceChildren(canvas);
 
     this.world.addChild(this.groundLayer);
+    this.world.addChild(this.puddleLayer);
     this.world.addChild(this.propLayer);
     this.world.addChild(this.actorLayer);
     this.app.stage.addChild(this.world);
@@ -99,9 +101,10 @@ export class MiraStage {
 
     if (snapshot.sceneId !== this.lastSceneId) {
       this.lastSceneId = snapshot.sceneId;
-      this.weather = snapshot.sceneId === 'plaza' ? 'rain' : 'clear';
     }
+    this.weather = snapshot.weather ?? 'clear';
 
+    this.drawRainPuddles(snapshot);
     this.drawActors(snapshot);
     this.drawProps(snapshot);
     this.applyCamera(snapshot);
@@ -133,6 +136,47 @@ export class MiraStage {
     this.groundLayer.addChild(g);
 
     // 广场地面微纹理（不再用无来源的居中光斑）
+  }
+
+  /** 路灯照射范围内的水洼（暖色反光） */
+  private drawRainPuddles(snapshot: RuntimeSnapshot): void {
+    this.puddleLayer.removeChildren();
+    if (this.weather !== 'rain') return;
+
+    const lamps = snapshot.props.filter((p) => p.prop === 'lamp_post' && p.state === 'on');
+    if (lamps.length === 0) return;
+
+    const g = new Graphics();
+    const LAMP_GLOW_WU = 3.2;
+
+    for (const lamp of lamps) {
+      const base = footRect(this.mapH, lamp.x, lamp.y, 0.01, 0.01);
+      // 水洼紧贴灯柱脚下、在光晕半径内
+      const puddleX = base.centerX + 6;
+      const puddleY = base.groundY + 3;
+      const puddleRx = PX_PER_WU * 0.85;
+      const puddleRy = PX_PER_WU * 0.32;
+
+      g.ellipse(puddleX, puddleY, puddleRx, puddleRy);
+      g.fill({ color: 0x1a2838, alpha: 0.82 });
+
+      g.ellipse(puddleX - 8, puddleY - 2, puddleRx * 0.35, puddleRy * 0.45);
+      g.fill({ color: 0xffc860, alpha: 0.55 });
+
+      g.ellipse(puddleX + 5, puddleY + 1, puddleRx * 0.22, puddleRy * 0.35);
+      g.fill({ color: 0xfff0c0, alpha: 0.4 });
+
+      // 第二片小水洼，仍在光晕内
+      const puddle2X = base.centerX - 14;
+      const puddle2Y = base.groundY + 5;
+      if (LAMP_GLOW_WU * PX_PER_WU > 14) {
+        g.ellipse(puddle2X, puddle2Y, puddleRx * 0.55, puddleRy * 0.7);
+        g.fill({ color: 0x1a2838, alpha: 0.7 });
+        g.ellipse(puddle2X + 4, puddle2Y - 1, puddleRx * 0.2, puddleRy * 0.3);
+        g.fill({ color: 0xffd070, alpha: 0.45 });
+      }
+    }
+    this.puddleLayer.addChild(g);
   }
 
   private drawActors(snapshot: RuntimeSnapshot): void {
@@ -182,20 +226,21 @@ export class MiraStage {
         g.fill(0x8b5a2b);
       } else if (prop.prop === 'lamp_post') {
         const lit = prop.state === 'on';
+        const base = footRect(this.mapH, prop.x, prop.y, 0.01, 0.01);
         if (lit) {
           const glowR = PX_PER_WU * 3.2;
-          g.circle(r.centerX, r.groundY, glowR);
-          g.fill({ color: 0xffd27f, alpha: 0.14 });
-          g.circle(r.centerX, r.groundY, glowR * 0.55);
-          g.fill({ color: 0xffe8a8, alpha: 0.1 });
+          g.circle(base.centerX, base.groundY, glowR);
+          g.fill({ color: 0xffd27f, alpha: 0.16 });
+          g.circle(base.centerX, base.groundY, glowR * 0.55);
+          g.fill({ color: 0xffe8a8, alpha: 0.12 });
         }
-        g.rect(r.centerX - 3, r.groundY - r.height, 6, r.height);
+        g.rect(base.centerX - 3, base.groundY - r.height, 6, r.height);
         g.fill(0x3a4555);
-        const headY = r.groundY - r.height + 8;
-        g.roundRect(r.centerX - 10, headY - 6, 20, 12, 3);
+        const headY = base.groundY - r.height + 8;
+        g.roundRect(base.centerX - 10, headY - 6, 20, 12, 3);
         g.fill(lit ? 0xffe9b0 : 0x556677);
         if (lit) {
-          g.circle(r.centerX, headY, 14);
+          g.circle(base.centerX, headY, 14);
           g.fill({ color: 0xfff2c8, alpha: 0.55 });
         }
       } else if (prop.prop === 'umbrella') {
