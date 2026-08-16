@@ -604,10 +604,10 @@ export class MiraStage {
     }
 
     if (facing === VIEW_FRONT) {
-      g.circle(cx, headCy, hr).fill(SKIN);
-      g.ellipse(cx, headCy - hr * 0.12, hr * 1.02, hr * 0.55).fill(hairColor);
+      g.ellipse(cx, headCy - hr * 0.48, hr * 0.94, hr * 0.38).fill(hairColor);
       g.ellipse(cx - hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4).fill(hairColor);
       g.ellipse(cx + hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4).fill(hairColor);
+      g.circle(cx, headCy, hr).fill(SKIN);
       g.circle(cx - hr * 0.28, headCy + hr * 0.1, hr * 0.1).fill(0x2a2520);
       g.circle(cx + hr * 0.28, headCy + hr * 0.1, hr * 0.1).fill(0x2a2520);
       g.ellipse(cx, headCy + hr * 0.36, hr * 0.13, hr * 0.06).fill(SKIN_SHADOW);

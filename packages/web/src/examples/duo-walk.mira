@@ -27,8 +27,8 @@ language: zh-CN
 @SPAWN_PROP prop=lamp_post id=lamp_1 at=(32, 26) state=on
 @SPAWN_PROP prop=bench id=bench_1 at=(34, 26) state=empty
 
-@ENTER actor=mira at=(26, 24) facing=east
-@ENTER actor=old_chen at=(28, 24) facing=east
+@ENTER actor=mira at=(26, 24) facing=south
+@ENTER actor=old_chen at=(28, 24) facing=south
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「陈伯，我们去路灯下坐坐吧。」
