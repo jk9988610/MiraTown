@@ -7,7 +7,7 @@ const SIZES = {
   mira: { w: 0.8, h: 1.6 },
   old_chen: { w: 0.9, h: 1.7 },
   lily: { w: 0.7, h: 1.5 },
-  bench: { w: 2.0, h: 1.0 },
+  bench: { w: 3.0, h: 1.0 },
   umbrella: { w: 4.5, h: 2.5 },
   lamp_post: { w: 0.4, h: 3.5 },
   letter: { w: 0.2, h: 0.15 },
@@ -18,6 +18,8 @@ const ACTOR_COLORS: Record<string, number> = {
   old_chen: 0x9aa5b1,
   lily: 0xff8fcb,
 };
+
+const LAMP_NEAR_WU = 1.2;
 
 function footRect(
   mapH: number,
@@ -36,16 +38,20 @@ function footRect(
   };
 }
 
+interface DepthItem {
+  id: string;
+  sortY: number;
+  draw: (g: Graphics) => void;
+}
+
 export class MiraStage {
   private app: Application | null = null;
   private world = new Container();
   private groundLayer = new Container();
   private puddleLayer = new Container();
-  private propLayer = new Container();
-  private actorLayer = new Container();
+  private depthLayer = new Container();
   private rainLayer = new Container();
-  private actorGfx = new Map<string, Graphics>();
-  private propGfx = new Map<string, Graphics>();
+  private depthGfx = new Map<string, Graphics>();
   private overlayEl: HTMLElement | null = null;
   private weather: 'clear' | 'rain' = 'clear';
   private mapW = 64;
@@ -73,8 +79,7 @@ export class MiraStage {
 
     this.world.addChild(this.groundLayer);
     this.world.addChild(this.puddleLayer);
-    this.world.addChild(this.propLayer);
-    this.world.addChild(this.actorLayer);
+    this.world.addChild(this.depthLayer);
     this.app.stage.addChild(this.world);
     this.app.stage.addChild(this.rainLayer);
 
@@ -82,8 +87,7 @@ export class MiraStage {
   }
 
   destroy(): void {
-    this.actorGfx.clear();
-    this.propGfx.clear();
+    this.depthGfx.clear();
     this.app?.destroy(true, { children: true });
     this.app = null;
   }
@@ -105,8 +109,8 @@ export class MiraStage {
     this.weather = snapshot.weather ?? 'clear';
 
     this.drawRainPuddles(snapshot);
-    this.drawActors(snapshot);
-    this.drawProps(snapshot);
+    this.drawLampGlows(snapshot);
+    this.drawDepthSorted(snapshot);
     this.applyCamera(snapshot);
     this.drawRain();
     this.updateOverlay(snapshot);
@@ -115,8 +119,6 @@ export class MiraStage {
   private drawGround(): void {
     this.groundLayer.removeChildren();
     const g = new Graphics();
-
-    // 地图外缘填充（防止镜头边缘露底色）
     const pad = 4;
     const totalW = (this.mapW + pad * 2) * PX_PER_WU;
     const totalH = (this.mapH + pad * 2) * PX_PER_WU;
@@ -134,11 +136,8 @@ export class MiraStage {
       }
     }
     this.groundLayer.addChild(g);
-
-    // 广场地面微纹理（不再用无来源的居中光斑）
   }
 
-  /** 路灯照射范围内的水洼（暖色反光） */
   private drawRainPuddles(snapshot: RuntimeSnapshot): void {
     this.puddleLayer.removeChildren();
     if (this.weather !== 'rain') return;
@@ -147,11 +146,8 @@ export class MiraStage {
     if (lamps.length === 0) return;
 
     const g = new Graphics();
-    const LAMP_GLOW_WU = 3.2;
-
     for (const lamp of lamps) {
       const base = footRect(this.mapH, lamp.x, lamp.y, 0.01, 0.01);
-      // 水洼紧贴灯柱脚下、在光晕半径内
       const puddleX = base.centerX + 6;
       const puddleY = base.groundY + 3;
       const puddleRx = PX_PER_WU * 0.85;
@@ -159,120 +155,179 @@ export class MiraStage {
 
       g.ellipse(puddleX, puddleY, puddleRx, puddleRy);
       g.fill({ color: 0x1a2838, alpha: 0.82 });
-
       g.ellipse(puddleX - 8, puddleY - 2, puddleRx * 0.35, puddleRy * 0.45);
       g.fill({ color: 0xffc860, alpha: 0.55 });
-
       g.ellipse(puddleX + 5, puddleY + 1, puddleRx * 0.22, puddleRy * 0.35);
       g.fill({ color: 0xfff0c0, alpha: 0.4 });
-
-      // 第二片小水洼，仍在光晕内
-      const puddle2X = base.centerX - 14;
-      const puddle2Y = base.groundY + 5;
-      if (LAMP_GLOW_WU * PX_PER_WU > 14) {
-        g.ellipse(puddle2X, puddle2Y, puddleRx * 0.55, puddleRy * 0.7);
-        g.fill({ color: 0x1a2838, alpha: 0.7 });
-        g.ellipse(puddle2X + 4, puddle2Y - 1, puddleRx * 0.2, puddleRy * 0.3);
-        g.fill({ color: 0xffd070, alpha: 0.45 });
-      }
     }
     this.puddleLayer.addChild(g);
   }
 
-  private drawActors(snapshot: RuntimeSnapshot): void {
-    const seen = new Set<string>();
-    for (const actor of snapshot.actors) {
-      seen.add(actor.id);
-      let g = this.actorGfx.get(actor.id);
-      if (!g) {
-        g = new Graphics();
-        this.actorGfx.set(actor.id, g);
-        this.actorLayer.addChild(g);
+  private drawLampGlows(snapshot: RuntimeSnapshot): void {
+    const g = new Graphics();
+    let hasGlow = false;
+    for (const prop of snapshot.props) {
+      if (prop.prop !== 'lamp_post' || prop.state !== 'on') continue;
+      hasGlow = true;
+      const base = footRect(this.mapH, prop.x, prop.y, 0.01, 0.01);
+      const glowR = PX_PER_WU * 3.2;
+      g.circle(base.centerX, base.groundY, glowR);
+      g.fill({ color: 0xffd27f, alpha: 0.16 });
+      g.circle(base.centerX, base.groundY, glowR * 0.55);
+      g.fill({ color: 0xffe8a8, alpha: 0.12 });
+    }
+    if (hasGlow) {
+      this.puddleLayer.addChild(g);
+    }
+  }
+
+  private nearestLampDist(
+    x: number,
+    y: number,
+    lamps: Array<{ x: number; y: number }>,
+  ): number {
+    let min = Infinity;
+    for (const lamp of lamps) {
+      min = Math.min(min, Math.hypot(x - lamp.x, y - lamp.y));
+    }
+    return min;
+  }
+
+  private drawDepthSorted(snapshot: RuntimeSnapshot): void {
+    const lamps = snapshot.props
+      .filter((p) => p.prop === 'lamp_post')
+      .map((p) => ({ x: p.x, y: p.y }));
+    const items: DepthItem[] = [];
+
+    for (const prop of snapshot.props) {
+      if (prop.prop === 'lamp_post') {
+        const nearActor = snapshot.actors.some(
+          (a) => Math.hypot(a.x - prop.x, a.y - prop.y) < LAMP_NEAR_WU,
+        );
+        const sortY = nearActor ? prop.y - 0.06 : prop.y + 0.06;
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY,
+          draw: (g) => this.drawLampPole(g, prop.x, prop.y, prop.state === 'on'),
+        });
+        continue;
       }
-      g.clear();
-      const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
-      const bob =
-        actor.state === 'WALKING' ? Math.sin(snapshot.T * 14) * (PX_PER_WU * 0.08) : 0;
-      const r = footRect(this.mapH, actor.x, actor.y, size.w, size.h);
-      const color = ACTOR_COLORS[actor.id] ?? 0xffffff;
-      g.roundRect(r.left, r.top - bob, r.width, r.height, 6);
-      g.fill(color);
-      g.circle(r.centerX, r.top + 10 - bob, 8);
-      g.fill(0xffe0bd);
+
+      if (prop.prop === 'bench') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: prop.y - 0.1,
+          draw: (g) => this.drawBench(g, prop.x, prop.y),
+        });
+        continue;
+      }
+
+      if (prop.prop === 'umbrella') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: prop.y + 0.02,
+          draw: (g) => this.drawUmbrella(g, prop.x, prop.y, prop.state),
+        });
+      }
     }
 
-    for (const [id, g] of this.actorGfx) {
+    for (const actor of snapshot.actors) {
+      const lampDist = lamps.length > 0 ? this.nearestLampDist(actor.x, actor.y, lamps) : Infinity;
+      let sortY = actor.y;
+      if (actor.state === 'SITTING') sortY += 0.08;
+      if (lampDist < LAMP_NEAR_WU) sortY += 0.05;
+      else if (lampDist < Infinity) sortY -= 0.04;
+
+      items.push({
+        id: `actor:${actor.id}`,
+        sortY,
+        draw: (g) => this.drawActor(g, actor, snapshot.T),
+      });
+    }
+
+    items.sort((a, b) => a.sortY - b.sortY);
+
+    const seen = new Set<string>();
+    this.depthLayer.removeChildren();
+    for (const item of items) {
+      seen.add(item.id);
+      let gfx = this.depthGfx.get(item.id);
+      if (!gfx) {
+        gfx = new Graphics();
+        this.depthGfx.set(item.id, gfx);
+      }
+      gfx.clear();
+      item.draw(gfx);
+      this.depthLayer.addChild(gfx);
+    }
+
+    for (const [id, gfx] of this.depthGfx) {
       if (!seen.has(id)) {
-        g.destroy();
-        this.actorGfx.delete(id);
+        gfx.destroy();
+        this.depthGfx.delete(id);
       }
     }
   }
 
-  private drawProps(snapshot: RuntimeSnapshot): void {
-    const seen = new Set<string>();
-    for (const prop of snapshot.props) {
-      seen.add(prop.id);
-      let g = this.propGfx.get(prop.id);
-      if (!g) {
-        g = new Graphics();
-        this.propGfx.set(prop.id, g);
-        this.propLayer.addChild(g);
-      }
-      g.clear();
-      const size = SIZES[prop.prop as keyof typeof SIZES] ?? { w: 0.5, h: 0.5 };
-      const r = footRect(this.mapH, prop.x, prop.y, size.w, size.h);
+  private drawBench(g: Graphics, x: number, y: number): void {
+    const size = SIZES.bench;
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    g.roundRect(r.left, r.top, r.width, r.height, 4);
+    g.fill(0x8b5a2b);
+    g.roundRect(r.left + 4, r.top + 4, r.width / 2 - 8, r.height - 8, 3);
+    g.fill(0x9a6a3a);
+    g.roundRect(r.left + r.width / 2 + 4, r.top + 4, r.width / 2 - 8, r.height - 8, 3);
+    g.fill(0x9a6a3a);
+  }
 
-      if (prop.prop === 'bench') {
-        g.roundRect(r.left, r.top, r.width, r.height, 4);
-        g.fill(0x8b5a2b);
-      } else if (prop.prop === 'lamp_post') {
-        const lit = prop.state === 'on';
-        const base = footRect(this.mapH, prop.x, prop.y, 0.01, 0.01);
-        if (lit) {
-          const glowR = PX_PER_WU * 3.2;
-          g.circle(base.centerX, base.groundY, glowR);
-          g.fill({ color: 0xffd27f, alpha: 0.16 });
-          g.circle(base.centerX, base.groundY, glowR * 0.55);
-          g.fill({ color: 0xffe8a8, alpha: 0.12 });
-        }
-        g.rect(base.centerX - 3, base.groundY - r.height, 6, r.height);
-        g.fill(0x3a4555);
-        const headY = base.groundY - r.height + 8;
-        g.roundRect(base.centerX - 10, headY - 6, 20, 12, 3);
-        g.fill(lit ? 0xffe9b0 : 0x556677);
-        if (lit) {
-          g.circle(base.centerX, headY, 14);
-          g.fill({ color: 0xfff2c8, alpha: 0.55 });
-        }
-      } else if (prop.prop === 'umbrella') {
-        const poleTop = r.groundY - r.height * 0.88;
-        g.moveTo(r.centerX, r.groundY);
-        g.lineTo(r.centerX, poleTop);
-        g.stroke({ width: 5, color: 0x555555 });
-        if (prop.state === 'open') {
-          const canopyR = (size.w * PX_PER_WU) / 2;
-          g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
-          g.fill({ color: 0xcc3333, alpha: 0.92 });
-          g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
-          g.stroke({ width: 3, color: 0x992222 });
-        } else {
-          g.moveTo(r.centerX - 8, poleTop);
-          g.lineTo(r.centerX + 8, poleTop - 6);
-          g.stroke({ width: 3, color: 0x666666 });
-        }
-      } else {
-        g.rect(r.left, r.top, r.width, r.height);
-        g.fill(0xf5e6c8);
-      }
+  private drawLampPole(g: Graphics, x: number, y: number, lit: boolean): void {
+    const size = SIZES.lamp_post;
+    const base = footRect(this.mapH, x, y, size.w, size.h);
+    g.rect(base.centerX - 3, base.groundY - base.height, 6, base.height);
+    g.fill(0x3a4555);
+    const headY = base.groundY - base.height + 8;
+    g.roundRect(base.centerX - 10, headY - 6, 20, 12, 3);
+    g.fill(lit ? 0xffe9b0 : 0x556677);
+    if (lit) {
+      g.circle(base.centerX, headY, 14);
+      g.fill({ color: 0xfff2c8, alpha: 0.55 });
     }
+  }
 
-    for (const [id, g] of this.propGfx) {
-      if (!seen.has(id)) {
-        g.destroy();
-        this.propGfx.delete(id);
-      }
+  private drawUmbrella(g: Graphics, x: number, y: number, state: string): void {
+    const size = SIZES.umbrella;
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    const poleTop = r.groundY - r.height * 0.88;
+    g.moveTo(r.centerX, r.groundY);
+    g.lineTo(r.centerX, poleTop);
+    g.stroke({ width: 5, color: 0x555555 });
+    if (state === 'open') {
+      const canopyR = (size.w * PX_PER_WU) / 2;
+      g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
+      g.fill({ color: 0xcc3333, alpha: 0.92 });
+      g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
+      g.stroke({ width: 3, color: 0x992222 });
     }
+  }
+
+  private drawActor(
+    g: Graphics,
+    actor: { id: string; x: number; y: number; state: string },
+    time: number,
+  ): void {
+    const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
+    const sitting = actor.state === 'SITTING';
+    const bob =
+      actor.state === 'WALKING' ? Math.sin(time * 14) * (PX_PER_WU * 0.08) : 0;
+    const heightWu = sitting ? size.h * 0.62 : size.h;
+    const r = footRect(this.mapH, actor.x, actor.y, size.w, heightWu);
+    const top = r.top - bob + (sitting ? PX_PER_WU * 0.15 : 0);
+    const color = ACTOR_COLORS[actor.id] ?? 0xffffff;
+    g.roundRect(r.left, top, r.width, r.height, 6);
+    g.fill(color);
+    const headY = top + (sitting ? 8 : 10);
+    g.circle(r.centerX, headY, sitting ? 7 : 8);
+    g.fill(0xffe0bd);
   }
 
   private applyCamera(snapshot: RuntimeSnapshot): void {

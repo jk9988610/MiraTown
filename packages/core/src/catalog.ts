@@ -65,7 +65,7 @@ actors:
 props:
   - id: bench
     display_name: 长椅
-    width: 2.0
+    width: 3.0
     height: 1.0
     anchor: foot
     placeable: true
