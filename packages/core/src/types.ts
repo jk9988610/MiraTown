@@ -159,7 +159,7 @@ export interface RuntimeSnapshot {
   t: number;
   sceneId: string | null;
   actors: Array<{ id: string; x: number; y: number; facing: string; state: string }>;
-  props: Array<{ id: string; prop: string; x: number; y: number; state: string }>;
+  props: Array<{ id: string; prop: string; x: number; y: number; state: string; attach?: string }>;
   camera: { x: number; y: number; zoom: number; mode: string; target?: string };
   mapSize: { w: number; h: number } | null;
   dialogue?: { speaker: string; line: string };

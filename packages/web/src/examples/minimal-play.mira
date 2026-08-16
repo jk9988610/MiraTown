@@ -24,42 +24,50 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@NARRATION duration=3
+@NARRATION duration=2.5
 雨点敲打着广场的石板路，路灯在水洼里碎成一片金光。
 
 @SPAWN_PROP prop=bench id=bench_1 at=(5, 3) state=empty
 
 @ENTER actor=mira at=(8, 5) facing=east
-@ENTER actor=old_chen at=(20, 6) facing=west
+@ENTER actor=old_chen at=(20, 5) facing=west
+@SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0, 0) state=open
 @CUT preset=cam_follow target=mira
 
 @DIALOGUE speaker=mira auto=true auto_delay=2.5
 「今晚的雨，好像永远不会停。」
 @END
 
-@MOVE_TO actor=old_chen to=(12, 5) duration=4
+@MOVE_TO actor=old_chen to=(14, 5) speed=1.2
 
 @FACE actor=mira facing=west
-@EMOTE actor=mira type=question duration=1.5
 
-@DIALOGUE speaker=old_chen
+@DIALOGUE speaker=old_chen auto=true auto_delay=2.5
 「年轻人，伞借你一半。」
 @END
 
-@PLAY_ANIM actor=old_chen anim=nod duration=1
-
-@DIALOGUE speaker=mira
+@DIALOGUE speaker=mira auto=true auto_delay=2
 「谢谢您，陈伯。」
 @END
 
 @ACT id=2 title="伞下"
 
-@WAIT 1
+@MOVE_TO actor=mira to=(15.5, 5) speed=1.2
 
-@MOVE_TO actor=mira to_actor=old_chen offset=(1, 0) duration=2
-@SPAWN_PROP prop=umbrella id=umbrella_1 at=(12.5, 5) state=open
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「有伞真好，雨声也没那么冷了。」
+@END
 
-@NARRATION duration=4
-两个人肩并肩站在雨中，广场的灯光忽然变得柔和起来。
+@DIALOGUE speaker=old_chen auto=true auto_delay=2.5
+「一起走一段吧。」
+@END
+
+@PARALLEL
+  @MOVE_TO actor=old_chen to=(20, 8) speed=1.2
+  @MOVE_TO actor=mira to=(18.5, 8) speed=1.2
+@END
+
+@NARRATION duration=2.5
+两个人肩并肩走在雨中，广场的灯光忽然变得柔和起来。
 
 @END_SCRIPT

@@ -83,6 +83,67 @@ describe('simple-walk.mira', () => {
   });
 });
 
+describe('movement and props', () => {
+  const catalog = loadDefaultCatalog();
+
+  it('computes move duration from speed when duration omitted', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(10, 8)
+@MOVE_TO actor=mira to=(16, 8) speed=1.2
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const events: number[] = [];
+    for (let i = 0; i < 600; i++) {
+      const snap = runtime.tick();
+      if (snap.actors[0]?.state === 'WALKING') events.push(snap.T);
+      if (snap.completed) break;
+    }
+    const walkTime = events.length / 60;
+    expect(walkTime).toBeGreaterThan(4);
+    expect(walkTime).toBeLessThan(7);
+  });
+
+  it('attaches prop to actor and follows movement', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [old_chen]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=old_chen at=(10, 5)
+@SPAWN_PROP prop=umbrella id=u1 attach=old_chen offset=(0, 0) state=open
+@MOVE_TO actor=old_chen to=(16, 5) speed=1.2
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const umbrella = snapshot.props.find((p) => p.id === 'u1');
+    const chen = snapshot.actors.find((a) => a.id === 'old_chen');
+    expect(umbrella?.x).toBeCloseTo(chen?.x ?? 0, 1);
+    expect(umbrella?.attach).toBe('old_chen');
+  });
+});
+
 describe('linter rules', () => {
   const catalog = loadDefaultCatalog();
 
