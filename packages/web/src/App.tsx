@@ -144,7 +144,7 @@ export function App() {
 
       <section className="player-section">
         <h2>演绎舞台</h2>
-        <StageView snapshot={snapshot} />
+        <StageView snapshot={snapshot} catalog={catalog} />
       </section>
 
       <div className="grid">

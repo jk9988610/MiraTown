@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { RuntimeSnapshot } from '@miratown/core';
+import type { Catalog, RuntimeSnapshot } from '@miratown/core';
 import { MiraStage } from '../renderer/MiraStage';
 
 interface StageViewProps {
   snapshot: RuntimeSnapshot | null;
+  catalog?: Catalog;
 }
 
-export function StageView({ snapshot }: StageViewProps) {
+export function StageView({ snapshot, catalog }: StageViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<MiraStage | null>(null);
@@ -21,7 +22,7 @@ export function StageView({ snapshot }: StageViewProps) {
     if (!host || !overlay) return;
 
     let alive = true;
-    const stage = new MiraStage();
+    const stage = new MiraStage(catalog);
     stageRef.current = stage;
 
     void stage.mount(host, overlay).then(() => {

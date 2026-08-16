@@ -1,4 +1,5 @@
 import { getZoneCenter } from './catalog.js';
+import { resolveWalkwayTarget } from './walkway.js';
 import { isBlock, isDirective } from './parser.js';
 import type {
   BlockNode,
@@ -23,6 +24,7 @@ interface LintContext {
   enteredActors: Set<string>;
   actCount: number;
   sceneIds: Set<string>;
+  spawnedProps: Map<string, { propType: string; attach?: string }>;
   issues: LintIssue[];
 }
 
@@ -90,6 +92,16 @@ function resolveTargetPos(
   params: Record<string, ParamValue>,
   actorSizes: Map<string, { width: number; height: number }>,
 ): Vec2 | null {
+  const walkwayId = asString(params.to_path);
+  if (walkwayId) {
+    const walkway = catalog.walkways.get(walkwayId);
+    if (!walkway) return null;
+    return resolveWalkwayTarget(walkway, {
+      at: params.at !== undefined ? asNumber(params.at) : undefined,
+      x: params.x !== undefined ? asNumber(params.x) : undefined,
+      y: params.y !== undefined ? asNumber(params.y) : undefined,
+    });
+  }
   const to = asVec2(params.to);
   if (to) return to;
   const zoneId = asString(params.to_zone);
@@ -137,7 +149,7 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
   if (![
     'BEGIN', 'END_SCRIPT', 'ACT', 'SCENE', 'CAST', 'ENTER', 'EXIT', 'MOVE_TO', 'FACE',
     'SIT', 'STAND', 'PLAY_ANIM', 'EMOTE', 'SPAWN_PROP', 'DESPAWN_PROP', 'SET_PROP',
-    'GIVE', 'CAMERA', 'CUT', 'PAN', 'WAIT',
+    'SET_WALKWAY', 'GIVE', 'CAMERA', 'CUT', 'PAN', 'WAIT',
   ].includes(name)) {
     pushIssue(ctx, { code: 'E_UNKNOWN_DIRECTIVE', line, message: `未知指令 @${name}` });
     return;
@@ -233,13 +245,32 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       if (!ctx.presentActors.has(actor)) {
         pushIssue(ctx, { code: 'E_ACTOR_NOT_PRESENT', line, message: `角色 ${actor} 未在场` });
       }
+      const walkwayId = asString(params.to_path);
+      if (walkwayId && !catalog.walkways.has(walkwayId)) {
+        pushIssue(ctx, { code: 'E_UNKNOWN_WALKWAY', line, message: `未知人行道 ${walkwayId}` });
+      }
+      const onPath = asString(params.on_path);
+      if (onPath && !catalog.walkways.has(onPath)) {
+        pushIssue(ctx, { code: 'E_UNKNOWN_WALKWAY', line, message: `未知人行道 ${onPath}` });
+      }
       const target = resolveTargetPos(catalog, ctx, params, new Map());
       if (target) {
         checkBounds(ctx, catalog, target, 'actor', actor, line);
+      } else if (!walkwayId && !asVec2(params.to) && !asString(params.to_zone) && !asString(params.to_actor)) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@MOVE_TO 需要 to、to_path、to_zone 或 to_actor' });
       }
       const duration = asNumber(params.duration);
       if (duration !== undefined && duration < 0) {
         pushIssue(ctx, { code: 'E_NEGATIVE_DURATION', line, message: 'duration 不能为负' });
+      }
+      if (params.duration !== undefined && params.speed !== undefined) {
+        pushIssue(ctx, {
+          code: 'W_SPEED_DURATION_CONFLICT',
+          level: 'warning',
+          line,
+          message: '@MOVE_TO 同时指定 speed 与 duration，运行时将忽略 speed',
+          suggestion: '删除 speed 或 duration 之一',
+        });
       }
       break;
     }
@@ -284,6 +315,49 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       const state = asString(params.state);
       if (state && !def.states.includes(state)) {
         pushIssue(ctx, { code: 'E_INVALID_PROP_STATE', line, message: `道具 ${prop} 无效状态 ${state}` });
+      }
+      const propId = asString(params.id) ?? `${prop}_${ctx.spawnedProps.size + 1}`;
+      ctx.spawnedProps.set(propId, { propType: prop, attach: attach ?? undefined });
+      break;
+    }
+    case 'SET_PROP': {
+      const id = asString(params.id);
+      if (!id) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SET_PROP 缺少 id' });
+        break;
+      }
+      const spawned = ctx.spawnedProps.get(id);
+      if (!spawned) {
+        pushIssue(ctx, {
+          code: 'W_UNKNOWN_PROP_INSTANCE',
+          level: 'warning',
+          line,
+          message: `@SET_PROP 引用的道具实例 ${id} 未在本脚本中 spawn`,
+        });
+      }
+      const offset = asVec2(params.offset);
+      if (offset && spawned && !spawned.attach) {
+        pushIssue(ctx, {
+          code: 'W_SET_PROP_OFFSET_NO_ATTACH',
+          level: 'warning',
+          line,
+          message: `@SET_PROP offset 用于未 attach 的道具 ${id}，偏移不会改变持伞侧等行为`,
+          suggestion: 'attach 道具应固定 spawn offset，避免中途翻转',
+        });
+      }
+      break;
+    }
+    case 'SET_WALKWAY': {
+      const id = asString(params.id);
+      if (!id) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SET_WALKWAY 缺少 id' });
+        break;
+      }
+      if (!catalog.walkways.has(id)) {
+        pushIssue(ctx, { code: 'E_UNKNOWN_WALKWAY', line, message: `未知人行道 ${id}` });
+      }
+      if (params.visible === undefined) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SET_WALKWAY 需要 visible=true|false' });
       }
       break;
     }
@@ -449,6 +523,7 @@ export function lintScript(ast: ScriptAST, catalog: Catalog): LintReport {
     enteredActors: new Set(),
     actCount: 0,
     sceneIds: new Set(),
+    spawnedProps: new Map(),
     issues: [],
   };
 

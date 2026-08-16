@@ -167,4 +167,77 @@ duration_estimate: 30
     const report = lintScript(ast, catalog);
     expect(report.errors.some((e) => e.code === 'E_PROP_NOT_PLACEABLE')).toBe(true);
   });
+
+  it('warns when MOVE_TO has both speed and duration', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(10, 8)
+@MOVE_TO actor=mira to=(12, 8) speed=2 duration=3
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const report = lintScript(ast, catalog);
+    expect(report.warnings.some((e) => e.code === 'W_SPEED_DURATION_CONFLICT')).toBe(true);
+  });
+});
+
+describe('walkways', () => {
+  const catalog = loadDefaultCatalog();
+
+  it('moves actor along walkway path', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(10, 5.85)
+@MOVE_TO actor=mira to_path=plaza_rain_path x=21
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const mira = snapshot.actors.find((a) => a.id === 'mira');
+    expect(mira?.x).toBeCloseTo(21, 1);
+    expect(mira?.y).toBeCloseTo(5.85, 2);
+  });
+
+  it('toggles walkway visibility via SET_WALKWAY', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@SET_WALKWAY id=plaza_rain_path visible=false
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const path = snapshot.walkways.find((w) => w.id === 'plaza_rain_path');
+    expect(path?.visible).toBe(false);
+  });
 });

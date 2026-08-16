@@ -5,6 +5,7 @@ import type {
   Catalog,
   PropDef,
   SceneDef,
+  WalkwayDef,
   ZoneDef,
 } from './types.js';
 
@@ -15,6 +16,7 @@ interface RawCatalog {
   scenes: SceneDef[];
   camera_presets: CameraPresetDef[];
   zones: ZoneDef[];
+  walkways?: WalkwayDef[];
 }
 
 function toMap<T extends { id: string }>(items: T[]): Map<string, T> {
@@ -29,6 +31,7 @@ export function loadCatalogFromObject(raw: RawCatalog): Catalog {
     scenes: toMap(raw.scenes),
     camera_presets: toMap(raw.camera_presets),
     zones: toMap(raw.zones),
+    walkways: toMap(raw.walkways ?? []),
   };
 }
 
@@ -45,6 +48,7 @@ actors:
     width: 0.8
     height: 1.6
     anchor: foot
+    body_profile: female
     animations: [idle, walk, wave, sit, talk]
     tags: [居民, 主角]
   - id: old_chen
@@ -52,6 +56,7 @@ actors:
     width: 0.9
     height: 1.7
     anchor: foot
+    body_profile: male
     animations: [idle, walk, nod, sit, talk]
     tags: [居民, 长者]
   - id: lily
@@ -59,6 +64,7 @@ actors:
     width: 0.7
     height: 1.5
     anchor: foot
+    body_profile: female
     animations: [idle, walk, jump, talk]
     tags: [居民, 孩子]
 
@@ -142,6 +148,22 @@ zones:
   - id: plaza_bench
     scene: plaza
     rect: { x: 8, y: 6, w: 3, h: 2 }
+
+walkways:
+  - id: plaza_rain_path
+    scene: plaza
+    points:
+      - { x: 10, y: 5.85 }
+      - { x: 28, y: 5.85 }
+    width: 1.2
+    visible_default: true
+  - id: plaza_main_path
+    scene: plaza
+    points:
+      - { x: 20, y: 25.85 }
+      - { x: 37, y: 25.85 }
+    width: 1.2
+    visible_default: true
 `;
 
 export function loadEmbeddedCatalog(): Catalog {

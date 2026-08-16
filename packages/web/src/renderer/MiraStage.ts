@@ -1,18 +1,17 @@
 import { Application, Container, Graphics } from 'pixi.js';
-import { clampCamera, PX_PER_WU, VIEW_H, VIEW_W } from '@miratown/core';
-import type { RuntimeSnapshot } from '@miratown/core';
+import {
+  clampCamera,
+  loadEmbeddedCatalog,
+  PX_PER_WU,
+  torsoWidths,
+  VIEW_H,
+  VIEW_W,
+  type Catalog,
+  type RuntimeSnapshot,
+} from '@miratown/core';
+import { DEPTH_BIAS, depthSortKey, LAMP_NEAR_WU } from './renderDepth';
 
-/** 实体尺寸（与 catalog/entities.yaml 一致），锚点均为脚底中心 */
-const SIZES = {
-  mira: { w: 0.8, h: 1.6 },
-  old_chen: { w: 0.9, h: 1.7 },
-  lily: { w: 0.7, h: 1.5 },
-  bench: { w: 3.0, h: 1.0 },
-  umbrella: { w: 4.5, h: 2.5 },
-  lamp_post: { w: 0.4, h: 3.5 },
-  letter: { w: 0.2, h: 0.15 },
-} as const;
-
+/** 实体颜色与发型（视觉层，catalog 不含色值） */
 const ACTOR_COLORS: Record<string, number> = {
   mira: 0x5b9cff,
   old_chen: 0x9aa5b1,
@@ -24,8 +23,6 @@ const ACTOR_HAIR: Record<string, number> = {
   old_chen: 0xb0a69c,
   lily: 0xc94e82,
 };
-
-const FEMALE_ACTORS = new Set(['mira', 'lily']);
 
 const SKIN = 0xffe0bd;
 const SKIN_SHADOW = 0xe8c9a8;
@@ -39,24 +36,12 @@ type Facing = 'north' | 'south' | 'east' | 'west';
 const VIEW_FRONT: Facing = 'south';
 const VIEW_BACK: Facing = 'north';
 
-interface TorsoWidths {
-  chest: number;
-  waist: number;
-  hip: number;
-}
-
-function torsoWidths(baseW: number, female: boolean): TorsoWidths {
-  return female
-    ? { chest: baseW * 1.16, waist: baseW * 1.06, hip: baseW * 1.32 }
-    : { chest: baseW * 1.06, waist: baseW * 0.96, hip: baseW * 1.2 };
-}
-
 function drawFrontTorso(
   g: Graphics,
   cx: number,
   top: number,
   height: number,
-  widths: TorsoWidths,
+  widths: ReturnType<typeof torsoWidths>,
   color: number,
 ): void {
   const yTop = top + height * 0.04;
@@ -103,7 +88,7 @@ function drawBackTorso(
   cx: number,
   top: number,
   height: number,
-  widths: TorsoWidths,
+  widths: ReturnType<typeof torsoWidths>,
   color: number,
 ): void {
   const yTop = top + height * 0.04;
@@ -164,13 +149,6 @@ function normalizeFacing(facing: string): Facing {
   return 'south';
 }
 
-const LAMP_NEAR_WU = 1.2;
-
-/** 脚底 Y 越小越靠前（覆盖 Y 更大者）；升序绘制，返回值越大越靠前 */
-function depthSortKey(footY: number, bias = 0): number {
-  return -footY + bias;
-}
-
 function footRect(
   mapH: number,
   cx: number,
@@ -195,11 +173,13 @@ interface DepthItem {
 }
 
 export class MiraStage {
+  private readonly catalog: Catalog;
   private app: Application | null = null;
   private mountGeneration = 0;
   private mounted = false;
   private world = new Container();
   private groundLayer = new Container();
+  private walkwayLayer = new Container();
   private puddleLayer = new Container();
   private depthLayer = new Container();
   private rainLayer = new Container();
@@ -210,11 +190,30 @@ export class MiraStage {
   private mapH = 48;
   private lastSceneId: string | null = null;
 
+  constructor(catalog?: Catalog) {
+    this.catalog = catalog ?? loadEmbeddedCatalog();
+  }
+
+  private actorSize(id: string) {
+    const def = this.catalog.actors.get(id);
+    return def ? { w: def.width, h: def.height } : { w: 0.8, h: 1.6 };
+  }
+
+  private propSize(id: string) {
+    const def = this.catalog.props.get(id);
+    return def ? { w: def.width, h: def.height } : { w: 1, h: 1 };
+  }
+
+  private bodyProfile(actorId: string) {
+    return this.catalog.actors.get(actorId)?.body_profile ?? 'male';
+  }
+
   async mount(container: HTMLElement, overlay: HTMLElement): Promise<void> {
     const generation = ++this.mountGeneration;
     this.overlayEl = overlay;
     this.world = new Container();
     this.groundLayer = new Container();
+    this.walkwayLayer = new Container();
     this.puddleLayer = new Container();
     this.depthLayer = new Container();
     this.rainLayer = new Container();
@@ -245,6 +244,7 @@ export class MiraStage {
     container.replaceChildren(canvas);
 
     this.world.addChild(this.groundLayer);
+    this.world.addChild(this.walkwayLayer);
     this.world.addChild(this.puddleLayer);
     this.world.addChild(this.depthLayer);
     app.stage.addChild(this.world);
@@ -282,6 +282,7 @@ export class MiraStage {
     }
     this.weather = snapshot.weather ?? 'clear';
 
+    this.drawWalkways(snapshot);
     this.drawRainPuddles(snapshot);
     this.drawLampGlows(snapshot);
     this.drawDepthSorted(snapshot);
@@ -310,6 +311,49 @@ export class MiraStage {
       }
     }
     this.groundLayer.addChild(g);
+  }
+
+  private drawWalkways(snapshot: RuntimeSnapshot): void {
+    this.walkwayLayer.removeChildren();
+    const g = new Graphics();
+    let hasWalkway = false;
+
+    for (const item of snapshot.walkways ?? []) {
+      if (!item.visible) continue;
+      const def = this.catalog.walkways.get(item.id);
+      if (!def || def.points.length < 2) continue;
+      hasWalkway = true;
+      const halfW = (def.width * PX_PER_WU) / 2;
+
+      for (let i = 1; i < def.points.length; i++) {
+        const a = def.points[i - 1];
+        const b = def.points[i];
+        const ra = footRect(this.mapH, a.x, a.y, 0.01, 0.01);
+        const rb = footRect(this.mapH, b.x, b.y, 0.01, 0.01);
+        const dx = rb.centerX - ra.centerX;
+        const dy = rb.groundY - ra.groundY;
+        const len = Math.hypot(dx, dy);
+        if (len < 1) continue;
+        const nx = (-dy / len) * halfW;
+        const ny = (dx / len) * halfW;
+        const pts = [
+          ra.centerX + nx,
+          ra.groundY + ny,
+          rb.centerX + nx,
+          rb.groundY + ny,
+          rb.centerX - nx,
+          rb.groundY - ny,
+          ra.centerX - nx,
+          ra.groundY - ny,
+        ];
+        g.poly(pts).fill({ color: 0x4a5a62, alpha: 0.55 });
+        g.poly(pts).stroke({ width: 1, color: 0x6a7a82, alpha: 0.35 });
+      }
+    }
+
+    if (hasWalkway) {
+      this.walkwayLayer.addChild(g);
+    }
   }
 
   private drawRainPuddles(snapshot: RuntimeSnapshot): void {
@@ -381,7 +425,7 @@ export class MiraStage {
         );
         items.push({
           id: `prop:${prop.id}`,
-          sortY: depthSortKey(prop.y, nearActor ? -0.1 : 0),
+          sortY: depthSortKey(prop.y, nearActor ? DEPTH_BIAS.lampNearActor : 0),
           draw: (g) => this.drawLampPole(g, prop.x, prop.y, prop.state === 'on'),
         });
         continue;
@@ -390,7 +434,7 @@ export class MiraStage {
       if (prop.prop === 'bench') {
         items.push({
           id: `prop:${prop.id}`,
-          sortY: depthSortKey(prop.y, -0.12),
+          sortY: depthSortKey(prop.y, DEPTH_BIAS.bench),
           draw: (g) => this.drawBench(g, prop.x, prop.y),
         });
         continue;
@@ -400,13 +444,15 @@ export class MiraStage {
         const holder = prop.attach ? actorById.get(prop.attach) : undefined;
         const footY = holder?.y ?? prop.y;
         let holderBias = 0;
-        if (holder?.state === 'SITTING') holderBias += 0.15;
+        if (holder?.state === 'SITTING') holderBias += DEPTH_BIAS.actorSitting;
         if (holder && lamps.length > 0 && this.nearestLampDist(holder.x, holder.y, lamps) < LAMP_NEAR_WU) {
-          holderBias += 0.1;
+          holderBias += DEPTH_BIAS.actorNearLamp;
         }
         const holderFacing = holder ? normalizeFacing(holder.facing) : VIEW_FRONT;
         const umbrellaBias =
-          holderFacing === VIEW_BACK ? holderBias - 0.22 : holderBias + 0.18;
+          holderFacing === VIEW_BACK
+            ? holderBias + DEPTH_BIAS.umbrellaBack
+            : holderBias + DEPTH_BIAS.umbrellaFront;
         items.push({
           id: `prop:${prop.id}`,
           sortY: depthSortKey(footY, umbrellaBias),
@@ -418,8 +464,8 @@ export class MiraStage {
     for (const actor of snapshot.actors) {
       const lampDist = lamps.length > 0 ? this.nearestLampDist(actor.x, actor.y, lamps) : Infinity;
       let bias = 0;
-      if (actor.state === 'SITTING') bias += 0.15;
-      if (lampDist < LAMP_NEAR_WU) bias += 0.1;
+      if (actor.state === 'SITTING') bias += DEPTH_BIAS.actorSitting;
+      if (lampDist < LAMP_NEAR_WU) bias += DEPTH_BIAS.actorNearLamp;
 
       items.push({
         id: `actor:${actor.id}`,
@@ -453,7 +499,7 @@ export class MiraStage {
   }
 
   private drawBench(g: Graphics, x: number, y: number): void {
-    const size = SIZES.bench;
+    const size = this.propSize('bench');
     const r = footRect(this.mapH, x, y, size.w, size.h);
     g.roundRect(r.left, r.top, r.width, r.height, 4);
     g.fill(0x8b5a2b);
@@ -464,7 +510,7 @@ export class MiraStage {
   }
 
   private drawLampPole(g: Graphics, x: number, y: number, lit: boolean): void {
-    const size = SIZES.lamp_post;
+    const size = this.propSize('lamp_post');
     const base = footRect(this.mapH, x, y, size.w, size.h);
     g.rect(base.centerX - 3, base.groundY - base.height, 6, base.height);
     g.fill(0x3a4555);
@@ -516,13 +562,11 @@ export class MiraStage {
     },
     snapshot: RuntimeSnapshot,
   ): void {
-    const size = SIZES.umbrella;
+    const size = this.propSize('umbrella');
     const holder = prop.attach
       ? snapshot.actors.find((a) => a.id === prop.attach)
       : undefined;
-    const holderSize = holder
-      ? (SIZES[holder.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 })
-      : { w: 0.8, h: 1.6 };
+    const holderSize = holder ? this.actorSize(holder.id) : { w: 0.8, h: 1.6 };
 
     let poleX: number;
     let chestY: number;
@@ -560,10 +604,10 @@ export class MiraStage {
     pose: ActorPose,
     facing: Facing,
     bodyColor: number,
-    female: boolean,
+    profile: 'female' | 'male',
   ): void {
     const { cx, bodyTop, bodyH, baseW } = pose;
-    const widths = torsoWidths(baseW, female);
+    const widths = torsoWidths(baseW, profile);
 
     if (facing === VIEW_BACK) {
       drawBackTorso(g, cx, bodyTop, bodyH, widths, this.shade(bodyColor, 0.9));
@@ -630,15 +674,15 @@ export class MiraStage {
     g: Graphics,
     actor: { id: string; x: number; y: number; facing: string; state: string },
   ): void {
-    const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
+    const size = this.actorSize(actor.id);
     const sitting = actor.state === 'SITTING';
     const facing = sitting ? VIEW_FRONT : normalizeFacing(actor.facing);
     const pose = this.actorPose(actor, size);
     const bodyColor = ACTOR_COLORS[actor.id] ?? 0xffffff;
     const hairColor = ACTOR_HAIR[actor.id] ?? 0x3a3a3a;
-    const female = FEMALE_ACTORS.has(actor.id);
+    const profile = this.bodyProfile(actor.id);
 
-    this.drawActorBody(g, pose, facing, bodyColor, female);
+    this.drawActorBody(g, pose, facing, bodyColor, profile);
     this.drawActorHair(g, pose.cx, pose.headCy, pose.headR, facing, hairColor, sitting);
   }
 
