@@ -29,8 +29,8 @@ language: zh-CN
 @SPAWN_PROP prop=lamp_post id=lamp_3 at=(24, 6) state=on
 @SPAWN_PROP prop=bench id=bench_1 at=(10, 5) state=empty
 
-@ENTER actor=mira at=(13, 6) facing=east
-@ENTER actor=old_chen at=(25, 6) facing=west
+@ENTER actor=mira at=(11, 6) facing=east
+@ENTER actor=old_chen at=(27, 6) facing=west
 @SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0, 0) state=open
 @CUT preset=cam_follow target=mira
 
@@ -41,7 +41,7 @@ language: zh-CN
 「今晚的雨，好像永远不会停。」
 @END
 
-@MOVE_TO actor=old_chen to=(17, 6) speed=1.2
+@MOVE_TO actor=old_chen to=(18, 6) speed=1.2
 
 @FACE actor=mira facing=west
 
@@ -55,9 +55,9 @@ language: zh-CN
 
 @ACT id=2 title="伞下"
 
-@MOVE_TO actor=mira to=(19, 6) speed=1.2
+@MOVE_TO actor=mira to=(20, 6) speed=1.2
 
-@SET_PROP id=umbrella_1 offset=(0.35, 0)
+@SET_PROP id=umbrella_1 offset=(0.4, 0)
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「有伞真好，雨声也没那么冷了。」
@@ -66,6 +66,8 @@ language: zh-CN
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
 「一起走一段吧。」
 @END
+
+@SET_PROP id=umbrella_1 offset=(-0.4, 0)
 
 @FACE actor=mira facing=north
 @FACE actor=old_chen facing=north

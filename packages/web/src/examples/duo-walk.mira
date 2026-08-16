@@ -24,6 +24,9 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
+@SPAWN_PROP prop=lamp_post id=lamp_1 at=(28, 22) state=on
+@SPAWN_PROP prop=lamp_post id=lamp_2 at=(34, 28) state=on
+
 @ENTER actor=mira at=(28, 22) facing=east
 @ENTER actor=old_chen at=(30, 22) facing=east
 

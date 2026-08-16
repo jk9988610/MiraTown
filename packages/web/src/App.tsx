@@ -84,6 +84,8 @@ export function App() {
     const runtime = new Runtime(catalog);
     runtime.load(ir);
     runtimeRef.current = runtime;
+    const primed = runtime.primeToFirstActor();
+    setSnapshot({ ...primed, actors: [...primed.actors], props: [...primed.props] });
 
     let last = performance.now();
     const loop = (now: number) => {
