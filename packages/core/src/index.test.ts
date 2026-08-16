@@ -130,7 +130,7 @@ duration_estimate: 30
 @BEGIN
 @SCENE id=plaza
 @ENTER actor=old_chen at=(10, 5)
-@SPAWN_PROP prop=umbrella id=u1 attach=old_chen offset=(0, 0) state=open
+@SPAWN_PROP prop=umbrella id=u1 attach=old_chen offset=(0.4, 0) state=open
 @MOVE_TO actor=old_chen to=(16, 5) speed=1.2
 @END_SCRIPT`;
     const ast = parseScript(source);
@@ -139,8 +139,9 @@ duration_estimate: 30
     const snapshot = runtime.runToCompletion();
     const umbrella = snapshot.props.find((p) => p.id === 'u1');
     const chen = snapshot.actors.find((a) => a.id === 'old_chen');
-    expect(umbrella?.x).toBeCloseTo(chen?.x ?? 0, 1);
     expect(umbrella?.attach).toBe('old_chen');
+    expect(umbrella?.offsetX).toBeCloseTo(0.4);
+    expect(umbrella?.x).toBeCloseTo((chen?.x ?? 0) + 0.4, 1);
   });
 });
 

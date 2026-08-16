@@ -8,7 +8,7 @@ catalog_version: "1.0.0"
 tags: [爱情, 小镇, 雨夜]
 cast: [mira, old_chen]
 scenes: [plaza]
-acts: 2
+acts: 1
 duration_estimate: 90
 tone: 治愈
 author: example
@@ -32,7 +32,7 @@ language: zh-CN
 @SIT actor=mira bench=bench_1 seat=0
 
 @ENTER actor=old_chen at=(27, 6) facing=west
-@SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0, 0) state=open
+@SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0.4, 0) state=open
 @CUT preset=cam_follow target=mira
 
 @NARRATION duration=2.5
@@ -42,7 +42,7 @@ language: zh-CN
 「今晚的雨，好像永远不会停。」
 @END
 
-@MOVE_TO actor=old_chen to=(18, 6) speed=1.2
+@MOVE_TO actor=old_chen to=(24, 6) speed=1.2
 
 @FACE actor=mira facing=west
 
@@ -56,11 +56,11 @@ language: zh-CN
 「谢谢您，陈伯。我这就过来。」
 @END
 
-@ACT id=2 title="伞下"
+@SET_PROP id=umbrella_1 offset=(-0.4, 0)
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(20.5, 6) speed=1.2
-  @MOVE_TO actor=old_chen to=(18, 6) speed=1.2
+  @MOVE_TO actor=mira to=(20, 6) speed=1.2
+  @MOVE_TO actor=old_chen to=(22, 6) speed=1.2
 @END
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
@@ -75,8 +75,8 @@ language: zh-CN
 @FACE actor=old_chen facing=north
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(22, 10) speed=1.2
-  @MOVE_TO actor=old_chen to=(24, 10) speed=1.2
+  @MOVE_TO actor=mira to=(20, 10) speed=1.2
+  @MOVE_TO actor=old_chen to=(22, 10) speed=1.2
 @END
 
 @NARRATION duration=2.5
