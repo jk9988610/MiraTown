@@ -122,8 +122,8 @@ export class Runtime {
       if (!co.done) this.queue.push(co);
     }
 
-    this.updateAttachedProps();
     this.updateUmbrellaTowardPartner();
+    this.updateAttachedProps();
 
     this.updateFollowCamera(dt);
     this.clampCameraToMap();
@@ -273,16 +273,20 @@ export class Runtime {
       const moveChildren = children.filter((c) => c.node.op === 'MOVE_TO');
       if (moveChildren.length > 1) {
         let maxDur = 0;
+        const moveStarts = new Map<ActiveCoroutine, { start: Vec2; target: Vec2 }>();
         for (const child of moveChildren) {
           const actorId = asString(child.node.params.actor);
           const actor = actorId ? this.actors.get(actorId) : undefined;
           const target = this.resolveMoveTarget(child.node.params);
           if (actor && target) {
             const start = { x: actor.x, y: actor.y };
-            const dur = this.computeMoveDuration(child.node, start, target);
-            maxDur = Math.max(maxDur, dur);
-            child.meta = { start, parallelDuration: maxDur };
+            moveStarts.set(child, { start, target });
+            maxDur = Math.max(maxDur, this.computeMoveDuration(child.node, start, target));
           }
+        }
+        for (const child of moveChildren) {
+          const st = moveStarts.get(child);
+          if (st) child.meta = { start: st.start, parallelDuration: maxDur };
         }
       }
 
@@ -479,6 +483,15 @@ export class Runtime {
           offsetX: offset.x,
           offsetY: offset.y,
         });
+        if (asString(node.params.prop) === 'umbrella' && attach) {
+          this.updateUmbrellaTowardPartner();
+          const spawned = this.props.get(id);
+          const holder = attach ? this.actors.get(attach) : undefined;
+          if (spawned && holder) {
+            spawned.x = holder.x + spawned.offsetX;
+            spawned.y = holder.y + spawned.offsetY;
+          }
+        }
         this.log('prop_spawn', { id, attach }, node.line);
         break;
       }
