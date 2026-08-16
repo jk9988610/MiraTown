@@ -189,6 +189,7 @@ export class MiraStage {
   private mapW = 64;
   private mapH = 48;
   private lastSceneId: string | null = null;
+  private showWalkways = true;
 
   constructor(catalog?: Catalog) {
     this.catalog = catalog ?? loadEmbeddedCatalog();
@@ -266,8 +267,11 @@ export class MiraStage {
     this.overlayEl = null;
   }
 
-  update(snapshot: RuntimeSnapshot): void {
+  update(snapshot: RuntimeSnapshot, options?: { showWalkways?: boolean }): void {
     if (!this.app) return;
+    if (options?.showWalkways !== undefined) {
+      this.showWalkways = options.showWalkways;
+    }
 
     if (snapshot.mapSize) {
       if (snapshot.mapSize.w !== this.mapW || snapshot.mapSize.h !== this.mapH) {
@@ -315,6 +319,7 @@ export class MiraStage {
 
   private drawWalkways(snapshot: RuntimeSnapshot): void {
     this.walkwayLayer.removeChildren();
+    if (!this.showWalkways) return;
     const g = new Graphics();
     let hasWalkway = false;
 

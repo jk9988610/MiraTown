@@ -164,7 +164,21 @@ textarea {
 .event .type { color: #c9a8ff; }
 
 .player-section {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.walkway-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #8b9bb0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.walkway-toggle input {
+  accent-color: #2f6fed;
 }
 
 .stage-wrap {
