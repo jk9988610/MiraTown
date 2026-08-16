@@ -1,4 +1,5 @@
 import { getZoneCenter } from './catalog.js';
+import { UMBRELLA_SIDE_OFFSET } from './constants.js';
 import { resolveWalkwayTarget } from './walkway.js';
 import { isBlock, isDirective } from './parser.js';
 import type {
@@ -148,8 +149,8 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
 
   if (![
     'BEGIN', 'END_SCRIPT', 'ACT', 'SCENE', 'CAST', 'ENTER', 'EXIT', 'MOVE_TO', 'FACE',
-    'SIT', 'STAND', 'PLAY_ANIM', 'EMOTE', 'SPAWN_PROP', 'DESPAWN_PROP', 'SET_PROP',
-    'SET_WALKWAY', 'GIVE', 'CAMERA', 'CUT', 'PAN', 'WAIT',
+    'SIT', 'STAND', 'PLAY_ANIM', 'EMOTE', 'SPAWN_PROP', 'DESPAWN_PROP', 'LAYOUT',
+    'SET_PROP', 'SET_WALKWAY', 'GIVE', 'CAMERA', 'CUT', 'PAN', 'WAIT',
   ].includes(name)) {
     pushIssue(ctx, { code: 'E_UNKNOWN_DIRECTIVE', line, message: `未知指令 @${name}` });
     return;
@@ -309,6 +310,21 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       if (attach && !ctx.castActors.has(attach)) {
         pushIssue(ctx, { code: 'E_UNKNOWN_ACTOR', line, message: `附着目标角色 ${attach} 未登记` });
       }
+      if (prop === 'umbrella' && attach) {
+        const offset = asVec2(params.offset) ?? { x: 0, y: 0 };
+        if (
+          Math.abs(offset.x - UMBRELLA_SIDE_OFFSET) > 0.01 ||
+          Math.abs(offset.y) > 0.01
+        ) {
+          pushIssue(ctx, {
+            code: 'W_UMBRELLA_OFFSET',
+            level: 'warning',
+            line,
+            message: `雨伞 attach 偏移应为 (${UMBRELLA_SIDE_OFFSET}, 0)，当前为 (${offset.x}, ${offset.y})`,
+            suggestion: '持伞侧在 spawn 时固定，勿用 offset 翻转',
+          });
+        }
+      }
       if (at) {
         checkBounds(ctx, catalog, at, 'prop', prop, line);
       }
@@ -318,6 +334,30 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       }
       const propId = asString(params.id) ?? `${prop}_${ctx.spawnedProps.size + 1}`;
       ctx.spawnedProps.set(propId, { propType: prop, attach: attach ?? undefined });
+      break;
+    }
+    case 'LAYOUT': {
+      const layoutId = asString(params.id);
+      if (!layoutId) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@LAYOUT 缺少 id' });
+        break;
+      }
+      const layout = catalog.scene_layouts.get(layoutId);
+      if (!layout) {
+        pushIssue(ctx, { code: 'E_UNKNOWN_LAYOUT', line, message: `未知场景布局 ${layoutId}` });
+        break;
+      }
+      if (ctx.sceneId && layout.scene !== ctx.sceneId) {
+        pushIssue(ctx, {
+          code: 'E_INVALID_LAYOUT',
+          line,
+          message: `布局 ${layoutId} 不属于当前场景 ${ctx.sceneId}`,
+        });
+      }
+      for (const lamp of layout.lamps) {
+        ctx.spawnedProps.set(lamp.id, { propType: 'lamp_post' });
+      }
+      ctx.spawnedProps.set(layout.bench.id, { propType: 'bench' });
       break;
     }
     case 'SET_PROP': {

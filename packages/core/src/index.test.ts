@@ -304,4 +304,56 @@ duration_estimate: 30
     const report = lintScript(ast, catalog);
     expect(report.errors.some((e) => e.code === 'E_SET_PROP_OFFSET_ATTACHED')).toBe(true);
   });
+
+  it('warns on non-standard umbrella attach offset', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [old_chen]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=old_chen at=(10, 5)
+@SPAWN_PROP prop=umbrella id=u1 attach=old_chen offset=(-0.4, 0) state=open
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const report = lintScript(ast, catalog);
+    expect(report.warnings.some((e) => e.code === 'W_UMBRELLA_OFFSET')).toBe(true);
+  });
+});
+
+describe('layout directive', () => {
+  const catalog = loadDefaultCatalog();
+
+  it('spawns props from scene layout', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@LAYOUT id=plaza_main_row
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const lamp = snapshot.props.find((p) => p.id === 'lamp_1');
+    const bench = snapshot.props.find((p) => p.id === 'bench_1');
+    expect(lamp?.y).toBeCloseTo(25.25, 2);
+    expect(bench?.y).toBeCloseTo(25.25, 2);
+    expect(lamp?.x).toBeCloseTo(32, 1);
+    expect(bench?.x).toBeCloseTo(34, 1);
+  });
 });

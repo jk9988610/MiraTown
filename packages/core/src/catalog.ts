@@ -189,17 +189,17 @@ scene_layouts:
     sidewalk_center_y: 5.85
     sidewalk_width: 1.2
     lamps:
-      - { x: 12 }
-      - { x: 22 }
-    bench: { x: 11 }
+      - { id: lamp_1, x: 12 }
+      - { id: lamp_2, x: 22 }
+    bench: { id: bench_1, x: 11 }
   - id: plaza_main_row
     scene: plaza
     walkway_id: plaza_main_path
     sidewalk_center_y: 25.85
     sidewalk_width: 1.2
     lamps:
-      - { x: 32 }
-    bench: { x: 34 }
+      - { id: lamp_1, x: 32 }
+    bench: { id: bench_1, x: 34 }
 `;
 
 export function loadEmbeddedCatalog(): Catalog {

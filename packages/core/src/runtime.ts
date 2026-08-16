@@ -1,6 +1,7 @@
 import { clampCamera } from './camera.js';
 import { getZoneCenter } from './catalog.js';
 import { DEFAULT_WALK_SPEED, DUO_WALK_SPACING } from './constants.js';
+import { layoutPropFootY } from './layout.js';
 import type { Catalog } from './types.js';
 import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './types.js';
 import {
@@ -509,6 +510,36 @@ export class Runtime {
         });
         this.syncAttachedPropPosition(id);
         this.log('prop_spawn', { id, attach }, node.line);
+        break;
+      }
+      case 'LAYOUT': {
+        const layoutId = asString(node.params.id);
+        const layout = layoutId ? this.catalog.scene_layouts.get(layoutId) : undefined;
+        if (!layout) break;
+        const footY = layoutPropFootY(layout);
+        const lampState = asString(node.params.lamp_state) ?? 'on';
+        const benchState = asString(node.params.bench_state) ?? 'empty';
+        for (const lamp of layout.lamps) {
+          this.props.set(lamp.id, {
+            id: lamp.id,
+            prop: 'lamp_post',
+            x: lamp.x,
+            y: footY,
+            state: lampState,
+            offsetX: 0,
+            offsetY: 0,
+          });
+        }
+        this.props.set(layout.bench.id, {
+          id: layout.bench.id,
+          prop: 'bench',
+          x: layout.bench.x,
+          y: footY,
+          state: benchState,
+          offsetX: 0,
+          offsetY: 0,
+        });
+        this.log('layout_spawn', { layout: layoutId, footY }, node.line);
         break;
       }
       case 'SET_PROP': {
