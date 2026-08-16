@@ -1,0 +1,39 @@
+---
+title: 简单行走
+theme: 入门
+synopsis: |
+  米拉从广场一侧走到中央，演示最基础的移动与字幕。
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+tags: [入门, 移动]
+cast: [mira]
+scenes: [plaza]
+acts: 1
+duration_estimate: 15
+tone: 轻松
+author: example
+language: zh-CN
+---
+
+@BEGIN title="简单行走"
+
+@ACT id=1 title="一个人"
+
+@SCENE id=plaza time=evening weather=clear
+
+@CAST actor=mira
+
+@ENTER actor=mira at=(10, 8) facing=east
+@CAMERA preset=cam_wide
+
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「我要去广场中央看看。」
+@END
+
+@MOVE_TO actor=mira to_zone=plaza_center duration=3
+
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「到了。」
+@END
+
+@END_SCRIPT

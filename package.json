@@ -5,7 +5,7 @@
     "packages/*"
   ],
   "scripts": {
-    "sync:example": "cp examples/minimal-play.mira packages/web/public/examples/minimal-play.mira && cp examples/minimal-play.mira packages/web/src/examples/minimal-play.mira",
+    "sync:example": "cp examples/*.mira packages/web/public/examples/ && cp examples/*.mira packages/web/src/examples/",
     "build": "npm run sync:example && npm run build -w @miratown/core && npm run build -w @miratown/web",
     "dev": "npm run dev -w @miratown/web",
     "test": "npm run test -w @miratown/core",

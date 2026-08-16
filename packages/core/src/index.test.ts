@@ -36,6 +36,53 @@ describe('minimal-play.mira', () => {
   });
 });
 
+describe('narration logging', () => {
+  const catalog = loadDefaultCatalog();
+
+  it('logs narration only once per block', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@NARRATION duration=2
+测试旁白只记一次。
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const ir = compileScript(ast);
+    const runtime = new Runtime(catalog);
+    runtime.load(ir);
+    runtime.runToCompletion();
+    const narrationEvents = runtime.getEvents().filter((e) => e.type === 'narration');
+    expect(narrationEvents).toHaveLength(1);
+    expect(narrationEvents[0].detail.text).toBe('测试旁白只记一次。');
+  });
+});
+
+describe('simple-walk.mira', () => {
+  const catalog = loadDefaultCatalog();
+  const simplePath = join(here, '../../../examples/simple-walk.mira');
+  const simpleSource = readFileSync(simplePath, 'utf8');
+
+  it('passes linter and runs', () => {
+    const ast = parseScript(simpleSource);
+    const report = lintScript(ast, catalog);
+    expect(report.passed, JSON.stringify(report.errors)).toBe(true);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    expect(snapshot.error).toBeUndefined();
+    expect(snapshot.completed).toBe(true);
+  });
+});
+
 describe('linter rules', () => {
   const catalog = loadDefaultCatalog();
 

@@ -38,10 +38,7 @@ language: zh-CN
 「今晚的雨，好像永远不会停。」
 @END
 
-@PARALLEL
-  @MOVE_TO actor=old_chen to=(12, 5) duration=4
-  @PAN target=old_chen duration=4
-@END
+@MOVE_TO actor=old_chen to=(12, 5) duration=4
 
 @FACE actor=mira facing=west
 @EMOTE actor=mira type=question duration=1.5
@@ -53,8 +50,6 @@ language: zh-CN
 @SPAWN_PROP prop=umbrella id=umbrella_1 at=(12, 5) state=open
 @PLAY_ANIM actor=old_chen anim=nod duration=1
 
-@CAMERA preset=cam_close target=mira duration=1.5
-
 @DIALOGUE speaker=mira
 「谢谢您，陈伯。」
 @END
@@ -63,10 +58,7 @@ language: zh-CN
 
 @WAIT 1
 
-@PARALLEL
-  @MOVE_TO actor=mira to_actor=old_chen offset=(1, 0) duration=2
-  @CAMERA preset=cam_medium target_zone=plaza_center duration=2
-@END
+@MOVE_TO actor=mira to_actor=old_chen offset=(1, 0) duration=2
 
 @NARRATION duration=4
 两个人肩并肩站在雨中，广场的灯光忽然变得柔和起来。

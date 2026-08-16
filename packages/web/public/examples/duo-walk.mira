@@ -1,0 +1,50 @@
+---
+title: 双人同行
+theme: 入门
+synopsis: |
+  米拉与陈伯分别从两侧走向广场中央，演示多人并行移动。
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+tags: [入门, 移动, 多人]
+cast: [mira, old_chen]
+scenes: [plaza]
+acts: 1
+duration_estimate: 25
+tone: 轻松
+author: example
+language: zh-CN
+---
+
+@BEGIN title="双人同行"
+
+@ACT id=1 title="走向中央"
+
+@SCENE id=plaza time=evening weather=clear
+
+@CAST actor=mira
+@CAST actor=old_chen
+
+@ENTER actor=mira at=(8, 6) facing=east
+@ENTER actor=old_chen at=(24, 6) facing=west
+@CAMERA preset=cam_wide
+
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「陈伯，我们去中间聊聊吧。」
+@END
+
+@PARALLEL
+  @MOVE_TO actor=mira to_zone=plaza_center duration=4
+  @MOVE_TO actor=old_chen to_zone=plaza_center duration=4
+@END
+
+@FACE actor=mira facing=west
+@FACE actor=old_chen facing=east
+
+@DIALOGUE speaker=old_chen auto=true auto_delay=2.5
+「好，年轻人，慢慢走。」
+@END
+
+@NARRATION duration=3
+两个人在广场中央碰面，晚风轻轻吹过石板路。
+
+@END_SCRIPT

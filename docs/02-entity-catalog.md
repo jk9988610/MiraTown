@@ -42,7 +42,7 @@ AI 剧本中引用的 `actor`、`prop`、`scene`、`camera preset` **必须来�
 | id | display_name | width | height | placeable | 状态 | tags |
 |----|-------------|-------|--------|-----------|------|------|
 | `bench` | 长椅 | 2.0 | 1.0 | 是 | `empty`, `occupied` | 家具 |
-| `umbrella` | 雨伞 | 0.6 | 1.2 | 是 | `closed`, `open` | 手持 |
+| `umbrella` | 雨伞 | 2.0 | 1.8 | 是 | `closed`, `open` | 手持（打开时伞面宽约 2 wu，可遮 1–2 人） |
 | `letter` | 信 | 0.2 | 0.15 | 否 | `sealed`, `open` | 剧情 |
 
 ### 2.1 道具行为约束
@@ -69,7 +69,7 @@ AI 剧本中引用的 `actor`、`prop`、`scene`、`camera preset` **必须来�
 
 | id | display_name | 尺寸 (w×h) | 默认镜头 | 环境预设 |
 |----|-------------|-----------|----------|----------|
-| `plaza` | 中心广场 | 32×24 | `cam_wide` | `day`, `evening`, `night`, `rain` |
+| `plaza` | 中心广场 | 64×48 | `cam_wide` | `day`, `evening`, `night`, `rain` |
 | `cafe_interior` | 街角咖啡馆 | 16×12 | `cam_medium` | `warm_light`, `dim` |
 
 ### 3.1 环境参数
