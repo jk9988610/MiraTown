@@ -1,9 +1,9 @@
 import { clampCamera } from './camera.js';
 import { getZoneCenter } from './catalog.js';
-import { DEFAULT_WALK_SPEED, DUO_WALK_SPACING } from './constants.js';
+import { DEFAULT_WALK_SPEED, DUO_WALK_SPACING, SIDEWALK_WIDTH } from './constants.js';
 import { layoutPropFootY } from './layout.js';
 import type { Catalog } from './types.js';
-import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './types.js';
+import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2, WalkwayDef } from './types.js';
 import {
   closestPointOnWalkway,
   duoWalkPositions,
@@ -86,6 +86,7 @@ export class Runtime {
   private narration?: string;
   private ir: IRNode | null = null;
   private activeMoveActors = new Set<string>();
+  private scriptWalkways = new Map<string, WalkwayDef>();
   private walkwayVisibility = new Map<string, boolean>();
 
   constructor(
@@ -114,6 +115,7 @@ export class Runtime {
     this.dialogue = undefined;
     this.narration = undefined;
     this.activeMoveActors.clear();
+    this.scriptWalkways.clear();
     this.walkwayVisibility.clear();
   }
 
@@ -405,6 +407,44 @@ export class Runtime {
       return;
     }
 
+    if (node.op === 'SIT' || node.op === 'STAND') {
+      const actorId = asString(node.params.actor);
+      const actor = actorId ? this.actors.get(actorId) : undefined;
+      if (!actor) {
+        co.done = true;
+        return;
+      }
+      if (!co.meta?.poseStarted) {
+        const poseEnd = co.meta?.poseEnd as Vec2 | undefined;
+        co.meta = {
+          poseStarted: true,
+          poseStart: { x: actor.x, y: actor.y },
+          poseEnd: poseEnd ?? { x: actor.x, y: actor.y },
+        };
+      }
+      const duration = co.duration || 0.5;
+      const progress = Math.min(1, co.elapsed / duration);
+      const start = co.meta.poseStart as Vec2;
+      const end = co.meta.poseEnd as Vec2;
+      actor.x = start.x + (end.x - start.x) * progress;
+      actor.y = start.y + (end.y - start.y) * progress;
+      if (node.op === 'SIT') {
+        actor.state = progress < 1 ? 'WALKING' : 'SITTING';
+        if (progress >= 1) {
+          actor.facing = 'south';
+          actor.state = 'SITTING';
+          co.done = true;
+        }
+      } else {
+        actor.state = progress < 1 ? 'WALKING' : 'IDLE';
+        if (progress >= 1) {
+          actor.state = 'IDLE';
+          co.done = true;
+        }
+      }
+      return;
+    }
+
     if (node.op === 'MOVE_TO') {
       const actorId = asString(node.params.actor);
       const actor = actorId ? this.actors.get(actorId) : undefined;
@@ -415,7 +455,7 @@ export class Runtime {
         return;
       }
       const pathId = this.movePathId(node.params);
-      const walkway = pathId ? this.catalog.walkways.get(pathId) : undefined;
+      const walkway = pathId ? this.getWalkway(pathId) : undefined;
       if (actorId && !co.meta?.moveRegistered) {
         this.activeMoveActors.add(actorId);
         const startPos = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
@@ -456,7 +496,8 @@ export class Runtime {
         const weather = asString(node.params.weather);
         this.weather = weather === 'rain' ? 'rain' : 'clear';
         this.t = 0;
-        this.initWalkwayVisibility();
+        this.scriptWalkways.clear();
+        this.walkwayVisibility.clear();
         this.log('scene_change', { scene: this.sceneId, weather: this.weather }, node.line);
         break;
       }
@@ -510,6 +551,25 @@ export class Runtime {
         });
         this.syncAttachedPropPosition(id);
         this.log('prop_spawn', { id, attach }, node.line);
+        break;
+      }
+      case 'SPAWN_WALKWAY': {
+        const id = asString(node.params.id);
+        const from = asVec2(node.params.from);
+        const to = asVec2(node.params.to);
+        const width = asNumber(node.params.width, SIDEWALK_WIDTH);
+        if (id && from && to) {
+          const def: WalkwayDef = {
+            id,
+            scene: this.sceneId ?? '',
+            points: [from, to],
+            width,
+            visible_default: true,
+          };
+          this.scriptWalkways.set(id, def);
+          this.walkwayVisibility.set(id, true);
+          this.log('walkway_spawn', { id, from, to, width }, node.line);
+        }
         break;
       }
       case 'LAYOUT': {
@@ -597,30 +657,27 @@ export class Runtime {
       case 'SIT': {
         const actorId = asString(node.params.actor);
         const actor = actorId ? this.actors.get(actorId) : undefined;
-        const benchId = asString(node.params.bench);
-        const seat = asNumber(node.params.seat, 0);
-        if (actor) {
-          if (benchId) {
-            const bench = this.props.get(benchId);
-            const benchDef = this.catalog.props.get('bench');
-            if (bench && benchDef) {
-              const seatOffset = seat === 1 ? benchDef.width * 0.22 : -benchDef.width * 0.22;
-              actor.x = bench.x + seatOffset;
-              actor.y = bench.y + 0.12;
-              bench.state = 'occupied';
+        if (actor && co) {
+          const poseEnd = this.resolveSitPose(node.params);
+          if (poseEnd) {
+            co.meta = { ...co.meta, poseEnd };
+            co.duration = asNumber(node.params.duration, 0.5);
+            const benchId = asString(node.params.bench);
+            if (benchId) {
+              const bench = this.props.get(benchId);
+              if (bench) bench.state = 'occupied';
             }
           }
-          actor.state = 'SITTING';
-          actor.facing = 'south';
-          this.log('sit', { actor: actorId, bench: benchId, seat }, node.line);
+          this.log('sit', { actor: actorId, bench: asString(node.params.bench) }, node.line);
         }
         break;
       }
       case 'STAND': {
         const actorId = asString(node.params.actor);
         const actor = actorId ? this.actors.get(actorId) : undefined;
-        if (actor) {
-          actor.state = 'IDLE';
+        if (actor && co) {
+          co.meta = { poseEnd: this.resolveStandPose(actor) };
+          co.duration = asNumber(node.params.duration, 0.5);
           this.log('stand', { actor: actorId }, node.line);
         }
         break;
@@ -681,24 +738,58 @@ export class Runtime {
     }
   }
 
+  private getWalkway(id: string): WalkwayDef | undefined {
+    return this.scriptWalkways.get(id) ?? this.catalog.walkways.get(id);
+  }
+
+  private resolveSitPose(params: Record<string, ParamValue>): Vec2 | null {
+    const benchId = asString(params.bench);
+    const seat = asNumber(params.seat, 0);
+    if (!benchId) return null;
+    const bench = this.props.get(benchId);
+    const benchDef = this.catalog.props.get('bench');
+    if (!bench || !benchDef) return null;
+    const seatOffset = seat === 1 ? benchDef.width * 0.22 : -benchDef.width * 0.22;
+    return { x: bench.x + seatOffset, y: bench.y + 0.12 };
+  }
+
+  private resolveStandPose(actor: ActorState): Vec2 {
+    const centerY = this.sidewalkCenterNear(actor.x) ?? actor.y;
+    return { x: actor.x, y: centerY };
+  }
+
+  private sidewalkCenterNear(x: number): number | null {
+    for (const w of this.scriptWalkways.values()) {
+      const xs = w.points.map((p) => p.x);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      if (x >= minX - 1 && x <= maxX + 1) {
+        return w.points[0].y;
+      }
+    }
+    return null;
+  }
+
   private initWalkwayVisibility(): void {
     this.walkwayVisibility.clear();
-    if (!this.sceneId) return;
-    for (const [id, def] of this.catalog.walkways) {
-      if (def.scene === this.sceneId) {
-        this.walkwayVisibility.set(id, def.visible_default);
-      }
+    for (const [id] of this.scriptWalkways) {
+      this.walkwayVisibility.set(id, true);
     }
   }
 
-  private sceneWalkwaysSnapshot(): Array<{ id: string; visible: boolean }> {
-    if (!this.sceneId) return [];
-    const items: Array<{ id: string; visible: boolean }> = [];
-    for (const [id, def] of this.catalog.walkways) {
-      if (def.scene !== this.sceneId) continue;
+  private sceneWalkwaysSnapshot(): Array<{
+    id: string;
+    visible: boolean;
+    points: Vec2[];
+    width: number;
+  }> {
+    const items: Array<{ id: string; visible: boolean; points: Vec2[]; width: number }> = [];
+    for (const [id, def] of this.scriptWalkways) {
       items.push({
         id,
-        visible: this.walkwayVisibility.get(id) ?? def.visible_default,
+        visible: this.walkwayVisibility.get(id) ?? true,
+        points: def.points,
+        width: def.width,
       });
     }
     return items;
@@ -711,7 +802,7 @@ export class Runtime {
   private resolveMoveTarget(params: Record<string, ParamValue>): Vec2 | null {
     const walkwayId = asString(params.to_path);
     if (walkwayId) {
-      const walkway = this.catalog.walkways.get(walkwayId);
+      const walkway = this.getWalkway(walkwayId);
       if (!walkway) return null;
       const duoCenter = params.duo_center !== undefined ? asNumber(params.duo_center) : undefined;
       const duoSide = asString(params.duo_side);
@@ -730,7 +821,7 @@ export class Runtime {
     if (to) {
       const onPath = asString(params.on_path);
       if (onPath) {
-        const walkway = this.catalog.walkways.get(onPath);
+        const walkway = this.getWalkway(onPath);
         if (walkway) return closestPointOnWalkway(walkway.points, to);
       }
       return to;
@@ -791,7 +882,7 @@ export class Runtime {
     }
     const speed = asNumber(node.params.speed, DEFAULT_WALK_SPEED);
     const pathId = this.movePathId(node.params);
-    const walkway = pathId ? this.catalog.walkways.get(pathId) : undefined;
+    const walkway = pathId ? this.getWalkway(pathId) : undefined;
     const dist = walkway
       ? walkwayMoveDistance(walkway.points, start, target)
       : Math.hypot(target.x - start.x, target.y - start.y);

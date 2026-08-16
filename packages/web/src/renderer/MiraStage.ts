@@ -325,14 +325,13 @@ export class MiraStage {
 
     for (const item of snapshot.walkways ?? []) {
       if (!item.visible) continue;
-      const def = this.catalog.walkways.get(item.id);
-      if (!def || def.points.length < 2) continue;
+      if (!item.points || item.points.length < 2) continue;
       hasWalkway = true;
-      const halfW = (def.width * PX_PER_WU) / 2;
+      const halfW = (item.width * PX_PER_WU) / 2;
 
-      for (let i = 1; i < def.points.length; i++) {
-        const a = def.points[i - 1];
-        const b = def.points[i];
+      for (let i = 1; i < item.points.length; i++) {
+        const a = item.points[i - 1];
+        const b = item.points[i];
         const ra = footRect(this.mapH, a.x, a.y, 0.01, 0.01);
         const rb = footRect(this.mapH, b.x, b.y, 0.01, 0.01);
         const dx = rb.centerX - ra.centerX;
