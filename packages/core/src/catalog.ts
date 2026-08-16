@@ -73,8 +73,8 @@ props:
     tags: [家具]
   - id: umbrella
     display_name: 雨伞
-    width: 2.0
-    height: 1.8
+    width: 4.5
+    height: 2.5
     anchor: foot
     placeable: true
     states: [closed, open]

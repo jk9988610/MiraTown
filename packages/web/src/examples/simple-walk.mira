@@ -24,7 +24,6 @@ language: zh-CN
 @CAST actor=mira
 
 @ENTER actor=mira at=(10, 8) facing=east
-@CAMERA preset=cam_wide
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「我要去广场中央看看。」

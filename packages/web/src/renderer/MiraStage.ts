@@ -8,7 +8,7 @@ const SIZES = {
   old_chen: { w: 0.9, h: 1.7 },
   lily: { w: 0.7, h: 1.5 },
   bench: { w: 2.0, h: 1.0 },
-  umbrella: { w: 2.0, h: 1.8 },
+  umbrella: { w: 4.5, h: 2.5 },
   letter: { w: 0.2, h: 0.15 },
 } as const;
 
@@ -186,16 +186,16 @@ export class MiraStage {
         g.roundRect(r.left, r.top, r.width, r.height, 4);
         g.fill(0x8b5a2b);
       } else if (prop.prop === 'umbrella') {
-        const poleTop = r.groundY - r.height * 0.75;
+        const poleTop = r.groundY - r.height * 0.88;
         g.moveTo(r.centerX, r.groundY);
         g.lineTo(r.centerX, poleTop);
-        g.stroke({ width: 4, color: 0x555555 });
+        g.stroke({ width: 5, color: 0x555555 });
         if (prop.state === 'open') {
-          const canopyR = size.w * PX_PER_WU * 0.48;
+          const canopyR = (size.w * PX_PER_WU) / 2;
           g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
-          g.fill({ color: 0xcc3333, alpha: 0.9 });
+          g.fill({ color: 0xcc3333, alpha: 0.92 });
           g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
-          g.stroke({ width: 2, color: 0x992222 });
+          g.stroke({ width: 3, color: 0x992222 });
         } else {
           g.moveTo(r.centerX - 8, poleTop);
           g.lineTo(r.centerX + 8, poleTop - 6);

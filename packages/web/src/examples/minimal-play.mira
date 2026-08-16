@@ -31,7 +31,6 @@ language: zh-CN
 
 @ENTER actor=mira at=(8, 5) facing=east
 @ENTER actor=old_chen at=(20, 6) facing=west
-@CAMERA preset=cam_wide
 @CUT preset=cam_follow target=mira
 
 @DIALOGUE speaker=mira auto=true auto_delay=2.5
@@ -47,7 +46,6 @@ language: zh-CN
 「年轻人，伞借你一半。」
 @END
 
-@SPAWN_PROP prop=umbrella id=umbrella_1 at=(12, 5) state=open
 @PLAY_ANIM actor=old_chen anim=nod duration=1
 
 @DIALOGUE speaker=mira
@@ -59,11 +57,9 @@ language: zh-CN
 @WAIT 1
 
 @MOVE_TO actor=mira to_actor=old_chen offset=(1, 0) duration=2
+@SPAWN_PROP prop=umbrella id=umbrella_1 at=(12.5, 5) state=open
 
 @NARRATION duration=4
 两个人肩并肩站在雨中，广场的灯光忽然变得柔和起来。
-
-@EXIT actor=old_chen duration=1
-@EXIT actor=mira duration=1
 
 @END_SCRIPT

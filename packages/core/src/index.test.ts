@@ -32,7 +32,7 @@ describe('minimal-play.mira', () => {
     const snapshot = runtime.runToCompletion();
     expect(snapshot.error).toBeUndefined();
     expect(snapshot.completed).toBe(true);
-    expect(snapshot.actors.length).toBe(0);
+    expect(snapshot.actors.length).toBe(2);
   });
 });
 
