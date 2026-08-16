@@ -23,6 +23,8 @@ language: zh-CN
 
 @CAST actor=mira
 
+@SPAWN_WALKWAY id=plaza_main_path from=(20, 25.85) to=(37, 25.85) width=1.2
+
 @LAYOUT id=plaza_main_row
 
 @ENTER actor=mira at=(22, 25.85) facing=south

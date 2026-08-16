@@ -1,5 +1,5 @@
 import { getZoneCenter } from './catalog.js';
-import { UMBRELLA_SIDE_OFFSET } from './constants.js';
+import { SIDEWALK_WIDTH, UMBRELLA_SIDE_OFFSET } from './constants.js';
 import { resolveWalkwayTarget } from './walkway.js';
 import { isBlock, isDirective } from './parser.js';
 import type {
@@ -12,6 +12,7 @@ import type {
   ScriptAST,
   ScriptNode,
   Vec2,
+  WalkwayDef,
 } from './types.js';
 
 const EXPECTED_DSL = '1.0';
@@ -26,6 +27,7 @@ interface LintContext {
   actCount: number;
   sceneIds: Set<string>;
   spawnedProps: Map<string, { propType: string; attach?: string }>;
+  spawnedWalkways: Map<string, WalkwayDef>;
   issues: LintIssue[];
 }
 
@@ -87,6 +89,10 @@ function checkBounds(
   }
 }
 
+function getWalkwayDef(catalog: Catalog, ctx: LintContext, id: string): WalkwayDef | undefined {
+  return ctx.spawnedWalkways.get(id) ?? catalog.walkways.get(id);
+}
+
 function resolveTargetPos(
   catalog: Catalog,
   ctx: LintContext,
@@ -95,7 +101,7 @@ function resolveTargetPos(
 ): Vec2 | null {
   const walkwayId = asString(params.to_path);
   if (walkwayId) {
-    const walkway = catalog.walkways.get(walkwayId);
+    const walkway = getWalkwayDef(catalog, ctx, walkwayId);
     if (!walkway) return null;
     return resolveWalkwayTarget(walkway, {
       at: params.at !== undefined ? asNumber(params.at) : undefined,
@@ -150,7 +156,7 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
   if (![
     'BEGIN', 'END_SCRIPT', 'ACT', 'SCENE', 'CAST', 'ENTER', 'EXIT', 'MOVE_TO', 'FACE',
     'SIT', 'STAND', 'PLAY_ANIM', 'EMOTE', 'SPAWN_PROP', 'DESPAWN_PROP', 'LAYOUT',
-    'SET_PROP', 'SET_WALKWAY', 'GIVE', 'CAMERA', 'CUT', 'PAN', 'WAIT',
+    'SET_PROP', 'SPAWN_WALKWAY', 'SET_WALKWAY', 'GIVE', 'CAMERA', 'CUT', 'PAN', 'WAIT',
   ].includes(name)) {
     pushIssue(ctx, { code: 'E_UNKNOWN_DIRECTIVE', line, message: `未知指令 @${name}` });
     return;
@@ -171,6 +177,7 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       ctx.sceneId = sceneId;
       ctx.sceneSize = { width: scene.width, height: scene.height };
       ctx.sceneIds.add(sceneId);
+      ctx.spawnedWalkways.clear();
       break;
     }
     case 'ACT':
@@ -247,11 +254,11 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
         pushIssue(ctx, { code: 'E_ACTOR_NOT_PRESENT', line, message: `角色 ${actor} 未在场` });
       }
       const walkwayId = asString(params.to_path);
-      if (walkwayId && !catalog.walkways.has(walkwayId)) {
+      if (walkwayId && !getWalkwayDef(catalog, ctx, walkwayId)) {
         pushIssue(ctx, { code: 'E_UNKNOWN_WALKWAY', line, message: `未知人行道 ${walkwayId}` });
       }
       const onPath = asString(params.on_path);
-      if (onPath && !catalog.walkways.has(onPath)) {
+      if (onPath && !getWalkwayDef(catalog, ctx, onPath)) {
         pushIssue(ctx, { code: 'E_UNKNOWN_WALKWAY', line, message: `未知人行道 ${onPath}` });
       }
       const target = resolveTargetPos(catalog, ctx, params, new Map());
@@ -360,6 +367,36 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       ctx.spawnedProps.set(layout.bench.id, { propType: 'bench' });
       break;
     }
+    case 'SPAWN_WALKWAY': {
+      const id = asString(params.id);
+      const from = asVec2(params.from);
+      const to = asVec2(params.to);
+      if (!id) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SPAWN_WALKWAY 缺少 id' });
+        break;
+      }
+      if (!from || !to) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SPAWN_WALKWAY 需要 from 与 to' });
+        break;
+      }
+      if (ctx.spawnedWalkways.has(id)) {
+        pushIssue(ctx, { code: 'E_DUPLICATE_WALKWAY', line, message: `人行道 ${id} 已在本场景 spawn` });
+        break;
+      }
+      const width = asNumber(params.width) ?? SIDEWALK_WIDTH;
+      if (width <= 0) {
+        pushIssue(ctx, { code: 'E_INVALID_PARAM', line, message: '@SPAWN_WALKWAY width 须为正数' });
+        break;
+      }
+      ctx.spawnedWalkways.set(id, {
+        id,
+        scene: ctx.sceneId ?? '',
+        points: [from, to],
+        width,
+        visible_default: true,
+      });
+      break;
+    }
     case 'SET_PROP': {
       const id = asString(params.id);
       if (!id) {
@@ -400,7 +437,7 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
         pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SET_WALKWAY 缺少 id' });
         break;
       }
-      if (!catalog.walkways.has(id)) {
+      if (!getWalkwayDef(catalog, ctx, id)) {
         pushIssue(ctx, { code: 'E_UNKNOWN_WALKWAY', line, message: `未知人行道 ${id}` });
       }
       if (params.visible === undefined) {
@@ -571,6 +608,7 @@ export function lintScript(ast: ScriptAST, catalog: Catalog): LintReport {
     actCount: 0,
     sceneIds: new Set(),
     spawnedProps: new Map(),
+    spawnedWalkways: new Map(),
     issues: [],
   };
 

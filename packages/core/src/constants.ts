@@ -10,13 +10,20 @@ export const UMBRELLA_SIDE_OFFSET = 0.4;
 /** 人行道宽度（wu） */
 export const SIDEWALK_WIDTH = 1.2;
 
-/** 道具脚底 Y：紧贴人行道顶缘（朝屏幕近端一侧），行人在 centerY 中心线行走 */
-export function propFootY(sidewalkCenterY: number, width = SIDEWALK_WIDTH): number {
-  return sidewalkCenterY - width / 2;
+/** 世界 Y 更大 = 人行道顶缘（北侧）；更小 = 底缘（南侧，朝摄像机） */
+export function sidewalkTopY(centerY: number, width = SIDEWALK_WIDTH): number {
+  return centerY + width / 2;
 }
 
-/** 雨夜广场人行道中心线 Y */
-export const PLAZA_RAIN_WALK_CENTER_Y = 5.85;
+export function sidewalkBottomY(centerY: number, width = SIDEWALK_WIDTH): number {
+  return centerY - width / 2;
+}
 
-/** 主广场人行道中心线 Y */
+/** 路灯/长椅脚底：紧贴人行道顶缘（y 较大一侧） */
+export function propFootY(sidewalkCenterY: number, width = SIDEWALK_WIDTH): number {
+  return sidewalkTopY(sidewalkCenterY, width);
+}
+
+/** @deprecated 使用 propFootY */
+export const PLAZA_RAIN_WALK_CENTER_Y = 5.85;
 export const PLAZA_MAIN_WALK_CENTER_Y = 25.85;

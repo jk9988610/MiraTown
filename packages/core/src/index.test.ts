@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { compileScript, lintScript, parseScript, Runtime } from './index.js';
+import type { WalkwayDef } from './types.js';
 import { interpolateWalkwayMove } from './walkway.js';
 import { loadDefaultCatalog } from './catalog-node.js';
 
@@ -193,6 +194,7 @@ duration_estimate: 30
 
 describe('walkways', () => {
   const catalog = loadDefaultCatalog();
+  const spawnRainPath = `@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2`;
 
   it('moves actor along walkway path', () => {
     const source = `---
@@ -207,6 +209,7 @@ duration_estimate: 30
 ---
 @BEGIN
 @SCENE id=plaza
+${spawnRainPath}
 @ENTER actor=mira at=(10, 5.85)
 @MOVE_TO actor=mira to_path=plaza_rain_path x=21
 @END_SCRIPT`;
@@ -232,6 +235,7 @@ duration_estimate: 30
 ---
 @BEGIN
 @SCENE id=plaza
+${spawnRainPath}
 @SET_WALKWAY id=plaza_rain_path visible=false
 @END_SCRIPT`;
     const ast = parseScript(source);
@@ -255,6 +259,7 @@ duration_estimate: 30
 ---
 @BEGIN
 @SCENE id=plaza
+@SPAWN_WALKWAY id=plaza_rain_north_left from=(19.5, 6.45) to=(19.5, 10) width=1.2
 @ENTER actor=mira at=(19.5, 5.85)
 @MOVE_TO actor=mira to_path=plaza_rain_north_left y=10
 @END_SCRIPT`;
@@ -268,7 +273,16 @@ duration_estimate: 30
   });
 
   it('walks in world space when starting off the walkway', () => {
-    const walkway = catalog.walkways.get('plaza_rain_path')!;
+    const walkway: WalkwayDef = {
+      id: 'test_path',
+      scene: 'plaza',
+      points: [
+        { x: 10, y: 5.85 },
+        { x: 28, y: 5.85 },
+      ],
+      width: 1.2,
+      visible_default: true,
+    };
     const start = { x: 27, y: 6 };
     const target = { x: 21, y: 5.85 };
     const mid = interpolateWalkwayMove(walkway.points, start, target, 0.5);
@@ -351,8 +365,8 @@ duration_estimate: 30
     const snapshot = runtime.runToCompletion();
     const lamp = snapshot.props.find((p) => p.id === 'lamp_1');
     const bench = snapshot.props.find((p) => p.id === 'bench_1');
-    expect(lamp?.y).toBeCloseTo(25.25, 2);
-    expect(bench?.y).toBeCloseTo(25.25, 2);
+    expect(lamp?.y).toBeCloseTo(26.45, 2);
+    expect(bench?.y).toBeCloseTo(26.45, 2);
     expect(lamp?.x).toBeCloseTo(32, 1);
     expect(bench?.x).toBeCloseTo(34, 1);
   });

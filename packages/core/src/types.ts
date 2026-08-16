@@ -155,6 +155,7 @@ export type IROp =
   | 'DESPAWN_PROP'
   | 'LAYOUT'
   | 'SET_PROP'
+  | 'SPAWN_WALKWAY'
   | 'SET_WALKWAY'
   | 'GIVE'
   | 'CAMERA'
@@ -197,7 +198,7 @@ export interface RuntimeSnapshot {
   }>;
   camera: { x: number; y: number; zoom: number; mode: string; target?: string };
   mapSize: { w: number; h: number } | null;
-  walkways: Array<{ id: string; visible: boolean }>;
+  walkways: Array<{ id: string; visible: boolean; points: Vec2[]; width: number }>;
   dialogue?: { speaker: string; line: string };
   narration?: string;
   completed: boolean;
