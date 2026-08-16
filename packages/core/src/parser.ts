@@ -27,6 +27,7 @@ const MVP_DIRECTIVES = new Set([
   'NARRATION',
   'SPAWN_PROP',
   'DESPAWN_PROP',
+  'LAYOUT',
   'SET_PROP',
   'SET_WALKWAY',
   'GIVE',

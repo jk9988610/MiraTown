@@ -120,8 +120,8 @@ export interface SceneLayoutDef {
   walkway_id: string;
   sidewalk_center_y: number;
   sidewalk_width: number;
-  lamps: Array<{ x: number }>;
-  bench: { x: number };
+  lamps: Array<{ id: string; x: number }>;
+  bench: { id: string; x: number };
 }
 
 export interface Catalog {
@@ -153,6 +153,7 @@ export type IROp =
   | 'NARRATION'
   | 'SPAWN_PROP'
   | 'DESPAWN_PROP'
+  | 'LAYOUT'
   | 'SET_PROP'
   | 'SET_WALKWAY'
   | 'GIVE'

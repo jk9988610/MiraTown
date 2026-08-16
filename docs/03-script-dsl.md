@@ -32,7 +32,7 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 | 移动 | `@MOVE_TO` `@FACE` `@SIT` `@STAND` | MOVE_TO 阻塞 | ✓ |
 | 表演 | `@PLAY_ANIM` `@EMOTE` | 视 duration | ✓ |
 | 语言 | `@DIALOGUE` `@NARRATION` | DIALOGUE 阻塞至关闭 | ✓ |
-| 道具 | `@SPAWN_PROP` `@DESPAWN_PROP` `@SET_PROP` `@GIVE` | SPAWN 瞬时 | ✓ |
+| 道具 | `@SPAWN_PROP` `@DESPAWN_PROP` `@LAYOUT` `@SET_PROP` `@SET_WALKWAY` `@GIVE` | SPAWN/LAYOUT 瞬时 | ✓ |
 | 镜头 | `@CAMERA` `@CUT` `@PAN` | 视 duration | ✓ |
 | 时序 | `@WAIT` `@PARALLEL` `@SEQUENCE` | 视子指令 | ✓ |
 
@@ -131,19 +131,28 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 @MOVE_TO actor=mira to=(14, 5) duration=3
 @MOVE_TO actor=mira to_zone=plaza_center
 @MOVE_TO actor=mira to_actor=old_chen offset=(1, 0)
+@MOVE_TO actor=mira to_path=plaza_main_path x=31
+@MOVE_TO actor=mira to_path=plaza_main_path duo_center=0.824 duo_side=left
 ```
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `actor` | actor_id | 是 | |
-| `to` | (x,y) | 三选一 | 目标坐标 |
-| `to_zone` | zone_id | 三选一 | 目标区域中心 |
-| `to_actor` | actor_id | 三选一 | 相对另一角色 |
+| `to` | (x,y) | 四选一 | 目标坐标；可配合 `on_path` |
+| `to_zone` | zone_id | 四选一 | 目标区域中心 |
+| `to_actor` | actor_id | 四选一 | 相对另一角色 |
+| `to_path` | walkway_id | 四选一 | 人行道目标；配合 `x`/`y`/`at`/`duo_center` |
+| `on_path` | walkway_id | 否 | 将 `to` 投影到人行道 |
+| `x` / `y` / `at` | number | 否 | 配合 `to_path`：路径上坐标或弧长比例 |
+| `duo_center` | number | 否 | 双人并排中心（0–1 弧长比例） |
+| `duo_side` | left\|right | 否 | 配合 `duo_center` |
 | `offset` | (x,y) | 否 | 配合 `to_actor`，默认 (0,0) |
 | `duration` | number | 否 | 秒；省略则按速度计算 |
 | `speed` | number | 否 | wu/s，默认 2.0 |
 
-未指定 `duration` 时：`duration = distance / speed`。
+未指定 `duration` 时：`duration = distance / speed`。`@PARALLEL` 内仅当所有 `@MOVE_TO` 均含 `duo_center` 时才同步到达。
+
+离人行道时直线走过去；起终点均在道上时沿弧长行走。
 
 #### `@FACE`
 转向，不移动。瞬时。
@@ -156,7 +165,7 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 坐/站。须靠近可坐道具或指定道具。
 
 ```
-@SIT actor=mira prop=bench_1
+@SIT actor=mira bench=bench_1 seat=0
 @STAND actor=mira
 ```
 
@@ -226,6 +235,20 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 
 ### 3.7 道具
 
+#### `@LAYOUT`
+按 catalog `scene_layouts` 一次性生成路灯与长椅，脚底自动对齐人行道顶缘。
+
+```
+@LAYOUT id=plaza_rain_row
+@LAYOUT id=plaza_main_row lamp_state=on bench_state=empty
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | layout_id | 是 | 如 `plaza_rain_row`、`plaza_main_row` |
+| `lamp_state` | string | 否 | 默认 `on` |
+| `bench_state` | string | 否 | 默认 `empty` |
+
 #### `@SPAWN_PROP`
 生成道具实例。
 
@@ -246,6 +269,20 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 ```
 @SET_PROP id=umbrella_1 state=open
 ```
+
+禁止对 attach 道具使用 `offset`（持伞侧须在 `@SPAWN_PROP` 时固定为 `0.4`）。
+
+#### `@SET_WALKWAY`
+控制人行道显隐（渲染层）。
+
+```
+@SET_WALKWAY id=plaza_rain_path visible=false
+```
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `id` | walkway_id | 是 | catalog 中的人行道 id |
+| `visible` | bool | 是 | `true` 显示 / `false` 隐藏 |
 
 #### `@GIVE`
 将手持类道具交给角色（道具实例须已存在或由引擎隐式创建）。

@@ -24,8 +24,7 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@SPAWN_PROP prop=lamp_post id=lamp_1 at=(32, 25.25) state=on
-@SPAWN_PROP prop=bench id=bench_1 at=(34, 25.25) state=empty
+@LAYOUT id=plaza_main_row
 
 @ENTER actor=mira at=(31.5, 25.85) facing=south
 @ENTER actor=old_chen at=(32.5, 25.85) facing=south
