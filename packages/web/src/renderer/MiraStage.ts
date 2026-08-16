@@ -25,8 +25,19 @@ const ACTOR_HAIR: Record<string, number> = {
   lily: 0xc94e82,
 };
 
-const SKIN = 0xffe0bd;
-const SKIN_SHADOW = 0xe8c9a8;
+const FEMALE_ACTORS = new Set(['mira', 'lily']);
+
+interface ActorPose {
+  cx: number;
+  groundY: number;
+  bodyTop: number;
+  bodyBottom: number;
+  bodyH: number;
+  headCy: number;
+  headR: number;
+  chestY: number;
+  baseW: number;
+}
 
 type Facing = 'north' | 'south' | 'east' | 'west';
 
@@ -270,7 +281,7 @@ export class MiraStage {
       items.push({
         id: `actor:${actor.id}`,
         sortY: depthSortKey(actor.y, bias),
-        draw: (g) => this.drawActor(g, actor, snapshot.T),
+        draw: (g) => this.drawActor(g, actor),
       });
     }
 
@@ -323,18 +334,30 @@ export class MiraStage {
     }
   }
 
-  private actorWaistPx(
+  private actorPose(
     actor: { id: string; x: number; y: number; state: string },
     size: { w: number; h: number },
-  ): { cx: number; waistY: number; headTopY: number; bodyH: number } {
+  ): ActorPose {
     const sitting = actor.state === 'SITTING';
     const heightWu = sitting ? size.h * 0.62 : size.h;
     const r = footRect(this.mapH, actor.x, actor.y, size.w, heightWu);
-    const bodyH = r.height;
-    const waistRatio = sitting ? 0.5 : 0.58;
-    const waistY = r.groundY - bodyH * waistRatio + (sitting ? PX_PER_WU * 0.12 : 0);
-    const headTopY = r.top + (sitting ? PX_PER_WU * 0.08 : 0);
-    return { cx: r.centerX, waistY, headTopY, bodyH };
+    const bodyBottom = sitting ? r.groundY - PX_PER_WU * 0.26 : r.groundY - PX_PER_WU * 0.06;
+    const bodyH = r.height * (sitting ? 0.46 : 0.5);
+    const bodyTop = bodyBottom - bodyH;
+    const headR = r.width * 0.28;
+    const headCy = bodyTop - headR * 0.82;
+    const chestY = bodyTop + bodyH * 0.34;
+    return {
+      cx: r.centerX,
+      groundY: r.groundY,
+      bodyTop,
+      bodyBottom,
+      bodyH,
+      headCy,
+      headR,
+      chestY,
+      baseW: r.width * 0.44,
+    };
   }
 
   private drawUmbrella(
@@ -358,28 +381,28 @@ export class MiraStage {
       : { w: 0.8, h: 1.6 };
 
     let poleX: number;
-    let waistY: number;
+    let chestY: number;
     let headTopY: number;
 
     if (holder) {
-      const pose = this.actorWaistPx(holder, holderSize);
+      const pose = this.actorPose(holder, holderSize);
       poleX = pose.cx;
-      waistY = pose.waistY;
-      headTopY = pose.headTopY;
+      chestY = pose.chestY;
+      headTopY = pose.headCy - pose.headR;
     } else {
       const base = footRect(this.mapH, prop.x, prop.y, 0.01, 0.01);
       poleX = base.centerX;
-      waistY = base.groundY - holderSize.h * PX_PER_WU * 0.58;
+      chestY = base.groundY - holderSize.h * PX_PER_WU * 0.68;
       headTopY = base.groundY - holderSize.h * PX_PER_WU;
     }
 
     const sidePx = (prop.offsetX ?? 0) * PX_PER_WU;
-    const poleXDraw = poleX + sidePx * 0.35;
+    const poleXDraw = poleX + sidePx * 0.25;
     const canopyCx = poleX + sidePx;
-    const poleTop = headTopY - PX_PER_WU * 0.35;
+    const poleTop = headTopY - PX_PER_WU * 0.2;
     const canopyR = (size.w * PX_PER_WU) / 2;
 
-    g.moveTo(poleXDraw, waistY);
+    g.moveTo(poleXDraw, chestY);
     g.lineTo(poleXDraw, poleTop);
     g.stroke({ width: 4, color: 0x555555 });
     if (prop.state === 'open') {
@@ -388,6 +411,73 @@ export class MiraStage {
       g.arc(canopyCx, poleTop, canopyR, Math.PI, 0);
       g.stroke({ width: 3, color: 0x992222 });
     }
+  }
+
+  private drawActorBody(
+    g: Graphics,
+    pose: ActorPose,
+    facing: Facing,
+    bodyColor: number,
+    female: boolean,
+  ): void {
+    const { cx, bodyTop, bodyH, baseW } = pose;
+    const segH = bodyH / 3;
+    const chestRx = baseW * (female ? 1.08 : 0.92);
+    const waistRx = baseW * (female ? 0.62 : 0.88);
+    const hipRx = baseW * (female ? 1.02 : 0.94);
+    const y1 = bodyTop + segH * 0.5;
+    const y2 = bodyTop + segH * 1.5;
+    const y3 = bodyTop + segH * 2.5;
+
+    if (facing === 'south') {
+      g.ellipse(cx, y1, chestRx, segH * 0.52);
+      g.fill(bodyColor);
+      g.ellipse(cx, y2, waistRx, segH * 0.42);
+      g.fill(bodyColor);
+      g.ellipse(cx, y3, hipRx, segH * 0.52);
+      g.fill(bodyColor);
+      g.ellipse(cx, y1 - segH * 0.08, chestRx * 0.72, segH * 0.18);
+      g.fill({ color: SKIN, alpha: 0.35 });
+      return;
+    }
+
+    if (facing === 'north') {
+      const back = this.shade(bodyColor, 0.88);
+      g.ellipse(cx, y1, chestRx * 0.96, segH * 0.5);
+      g.fill(back);
+      g.ellipse(cx, y2, waistRx * 1.02, segH * 0.44);
+      g.fill(back);
+      g.ellipse(cx, y3, hipRx * 0.98, segH * 0.5);
+      g.fill(back);
+      g.ellipse(cx, y1 + segH * 0.12, chestRx * 0.55, segH * 0.14);
+      g.fill(SKIN_SHADOW);
+      return;
+    }
+
+    const east = facing === 'east';
+    const dir = east ? 1 : -1;
+    const chestCx = cx + dir * baseW * 0.22;
+    const waistCx = cx - dir * baseW * (female ? 0.08 : 0.02);
+    const hipCx = cx - dir * baseW * (female ? 0.18 : 0.1);
+    const profileChest = baseW * (female ? 0.72 : 0.78);
+    const profileWaist = baseW * (female ? 0.48 : 0.72);
+    const profileHip = baseW * (female ? 0.68 : 0.76);
+
+    g.ellipse(chestCx, y1, profileChest, segH * 0.5);
+    g.fill(bodyColor);
+    g.ellipse(waistCx, y2, profileWaist, segH * 0.4);
+    g.fill(bodyColor);
+    g.ellipse(hipCx, y3, profileHip, segH * 0.5);
+    g.fill(bodyColor);
+    g.ellipse(chestCx + dir * baseW * 0.18, y1, baseW * 0.22, segH * 0.28);
+    g.fill(SKIN);
+  }
+
+  private shade(color: number, factor: number): number {
+    const r = Math.min(255, ((color >> 16) & 0xff) * factor);
+    const gv = Math.min(255, ((color >> 8) & 0xff) * factor);
+    const b = Math.min(255, (color & 0xff) * factor);
+    return (r << 16) | (gv << 8) | b;
   }
 
   private drawActorHair(
@@ -447,60 +537,23 @@ export class MiraStage {
   private drawActor(
     g: Graphics,
     actor: { id: string; x: number; y: number; facing: string; state: string },
-    time: number,
   ): void {
     const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
     const sitting = actor.state === 'SITTING';
     const facing = normalizeFacing(actor.facing);
-    const bob =
-      actor.state === 'WALKING' ? Math.sin(time * 14) * (PX_PER_WU * 0.08) : 0;
-    const heightWu = sitting ? size.h * 0.62 : size.h;
-    const r = footRect(this.mapH, actor.x, actor.y, size.w, heightWu);
-    const groundY = r.groundY - bob;
-    const cx = r.centerX;
+    const pose = this.actorPose(actor, size);
     const bodyColor = ACTOR_COLORS[actor.id] ?? 0xffffff;
     const hairColor = ACTOR_HAIR[actor.id] ?? 0x3a3a3a;
-    const bodyW = r.width * 0.82;
-    const bodyH = r.height * (sitting ? 0.38 : 0.44);
-    const bodyTop = groundY - bodyH - (sitting ? PX_PER_WU * 0.08 : PX_PER_WU * 0.18);
-    const headR = r.width * 0.3;
-    const headCy = bodyTop - headR * 0.75;
+    const female = FEMALE_ACTORS.has(actor.id);
 
-    if (!sitting && (facing === 'south' || facing === 'north')) {
-      const legW = bodyW * 0.28;
-      const legH = groundY - (bodyTop + bodyH);
-      const gap = bodyW * 0.12;
-      g.roundRect(cx - gap - legW, bodyTop + bodyH, legW, legH, 3);
-      g.fill(bodyColor);
-      g.roundRect(cx + gap, bodyTop + bodyH, legW, legH, 3);
-      g.fill(bodyColor);
-    }
-
-    if (sitting) {
-      const seatY = groundY - PX_PER_WU * 0.22;
-      g.roundRect(cx - bodyW * 0.55, seatY - PX_PER_WU * 0.18, bodyW * 1.1, PX_PER_WU * 0.22, 3);
-      g.fill(bodyColor);
-      g.roundRect(cx - bodyW * 0.45, bodyTop + bodyH * 0.55, bodyW * 0.9, PX_PER_WU * 0.28, 3);
-      g.fill(bodyColor);
-    }
-
-    g.roundRect(cx - bodyW / 2, bodyTop, bodyW, bodyH, 4);
-    g.fill(bodyColor);
-
-    if (facing === 'east' || facing === 'west') {
-      const dir = facing === 'east' ? 1 : -1;
-      const armW = bodyW * 0.22;
-      const armH = bodyH * 0.55;
-      g.roundRect(cx + dir * (bodyW * 0.38), bodyTop + bodyH * 0.12, armW, armH, 2);
-      g.fill(bodyColor);
-    }
+    this.drawActorBody(g, pose, facing, bodyColor, female);
 
     if (facing === 'north') {
-      this.drawActorHair(g, cx, headCy, headR, facing, hairColor, sitting);
-      g.circle(cx, headCy + headR * 0.15, headR * 0.55);
+      this.drawActorHair(g, pose.cx, pose.headCy, pose.headR, facing, hairColor, sitting);
+      g.circle(pose.cx, pose.headCy + pose.headR * 0.15, pose.headR * 0.55);
       g.fill(SKIN_SHADOW);
     } else {
-      this.drawActorHair(g, cx, headCy, headR, facing, hairColor, sitting);
+      this.drawActorHair(g, pose.cx, pose.headCy, pose.headR, facing, hairColor, sitting);
     }
   }
 

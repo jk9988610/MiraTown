@@ -683,10 +683,14 @@ export class Runtime {
   private applyMoveFacing(actor: ActorState, start: Vec2, target: Vec2): void {
     const dx = target.x - start.x;
     const dy = target.y - start.y;
-    if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 0.02) {
-      actor.facing = dx > 0 ? 'east' : 'west';
-    } else if (Math.abs(dy) > 0.02) {
+    const eps = 0.04;
+    const pureY = Math.abs(dx) < eps && Math.abs(dy) > eps;
+    if (pureY) {
       actor.facing = dy > 0 ? 'north' : 'south';
+      return;
+    }
+    if (Math.abs(dx) >= eps) {
+      actor.facing = dx > 0 ? 'east' : 'west';
     }
   }
 
