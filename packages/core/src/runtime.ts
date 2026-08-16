@@ -530,10 +530,19 @@ export class Runtime {
         const startPos = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
         co.meta = { ...co.meta, moveRegistered: true, start: startPos, pathId };
       }
+      const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
       const duration = co.duration || 1;
+      if (duration <= 0) {
+        actor.x = target.x;
+        actor.y = target.y;
+        actor.state = 'IDLE';
+        this.applyMoveFacing(actor, start, target);
+        if (actorId) this.activeMoveActors.delete(actorId);
+        co.done = true;
+        return;
+      }
       const progress = Math.min(1, co.elapsed / duration);
       const prevProgress = Math.max(0, progress - (duration > 0 ? dt / duration : 0));
-      const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
       const sampleAt = (p: number): Vec2 => {
         if (walkway) return interpolateWalkwayMove(walkway.points, start, target, p);
         return {
@@ -573,6 +582,12 @@ export class Runtime {
         this.t = 0;
         this.scriptWalkways.clear();
         this.walkwayVisibility.clear();
+        for (const [id, prop] of [...this.props.entries()]) {
+          if (!prop.attach || !this.actors.has(prop.attach)) {
+            this.props.delete(id);
+          }
+        }
+        this.snapCameraToActors();
         this.log('scene_change', { scene: this.sceneId, weather: this.weather }, node.line);
         break;
       }
@@ -599,6 +614,9 @@ export class Runtime {
       }
       case 'EXIT': {
         const actorId = asString(node.params.actor)!;
+        for (const [id, prop] of [...this.props.entries()]) {
+          if (prop.attach === actorId) this.props.delete(id);
+        }
         this.actors.delete(actorId);
         this.log('actor_exit', { actor: actorId }, node.line);
         break;

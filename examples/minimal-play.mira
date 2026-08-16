@@ -8,7 +8,7 @@ dsl_version: "1.0"
 catalog_version: "1.0.0"
 tags: [爱情, 小镇, 雨夜]
 cast: [mira, old_chen]
-scenes: [plaza]
+scenes: [plaza, supermarket_interior]
 acts: 2
 duration_estimate: 180
 tone: 治愈
@@ -30,6 +30,13 @@ language: zh-CN
 @SPAWN_WALKWAY id=plaza_rain_lane_right from=(10, 6.15) to=(28, 6.15) width=1.2
 @SPAWN_WALKWAY id=plaza_rain_north_left from=(19.5, 5.85) to=(19.5, 10) width=1.2
 @SPAWN_WALKWAY id=plaza_rain_north_right from=(20.5, 5.85) to=(20.5, 10) width=1.2
+@SPAWN_WALKWAY id=rain_west_lane_left from=(19.5, 10) to=(5, 10) width=1.2
+@SPAWN_WALKWAY id=rain_west_lane_right from=(20.5, 10) to=(6, 10) width=1.2
+
+@SPAWN_PROP prop=supermarket id=shop_1 at=(14, 10.6) state=open
+@SPAWN_PROP prop=shop_door id=shop_door_1 at=(14.2, 10.6) state=open
+@SPAWN_PROP prop=home_door id=mira_home_door at=(5.2, 10.6) state=open
+@SPAWN_PROP prop=home_door id=chen_home_door at=(6.3, 10.6) state=open
 
 @LAYOUT id=plaza_rain_row
 
@@ -92,15 +99,6 @@ language: zh-CN
 
 @ACT id=2 title="北路与超市"
 
-@SPAWN_WALKWAY id=rain_west_lane_left from=(19.5, 10) to=(5, 10) width=1.2
-@SPAWN_WALKWAY id=rain_west_lane_right from=(20.5, 10) to=(6, 10) width=1.2
-@SPAWN_WALKWAY id=shop_aisle from=(13, 10.5) to=(16, 11.8) width=0.9
-
-@SPAWN_PROP prop=supermarket id=shop_1 at=(14, 9.4) state=open
-@SPAWN_PROP prop=shop_door id=shop_door_1 at=(14.2, 9.4) state=open
-@SPAWN_PROP prop=home_door id=mira_home_door at=(5.2, 9.4) state=open
-@SPAWN_PROP prop=home_door id=chen_home_door at=(6.3, 9.4) state=open
-
 @NARRATION duration=2.5
 北路尽头向左一转，雨夜里亮着灯的超市出现在前方。
 
@@ -113,26 +111,66 @@ language: zh-CN
 「进去买吧，我在门口等你。」
 @END
 
-@MOVE_TO actor=mira to_path=shop_aisle at=0.12
+@MOVE_TO actor=mira to_path=rain_west_lane_left x=14.2
 @MOVE_TO actor=old_chen to_path=rain_west_lane_right x=14.8
 
 @FACE actor=old_chen facing=south
 
-@MOVE_TO actor=mira to_path=shop_aisle at=0.5
+@EXIT actor=old_chen
 
+@SCENE id=supermarket_interior time=evening weather=clear
+
+@CAST actor=cashier
+
+@SPAWN_WALKWAY id=shop_interior_aisle from=(6, 2) to=(6, 8) width=1.0
+@SPAWN_PROP prop=shop_shelf id=shelf_1 at=(6, 8) state=stocked
+@SPAWN_PROP prop=checkout_counter id=checkout_1 at=(4, 2) state=open
+@ENTER actor=cashier at=(4.5, 2) facing=east
+
+@MOVE_TO actor=mira to=(6, 2) duration=0
+@FACE actor=mira facing=north
+
+@MOVE_TO actor=mira to_path=shop_interior_aisle y=7.8
+
+@SET_PROP id=shelf_1 state=empty
 @SPAWN_PROP prop=scarf id=scarf_1 attach=mira offset=(0.2, 0.05) state=worn
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「这条围巾，应该会暖和些。」
 @END
 
-@MOVE_TO actor=mira to_path=shop_aisle at=0.92
+@MOVE_TO actor=mira to_path=shop_interior_aisle y=2.2
+@FACE actor=mira facing=west
 
 @DIALOGUE speaker=mira auto=true auto_delay=1.5
 「老板，结账。」
 @END
 
-@MOVE_TO actor=mira to_path=rain_west_lane_left x=14.5
+@DIALOGUE speaker=cashier auto=true auto_delay=1.5
+「好的，请慢走。」
+@END
+
+@EXIT actor=cashier
+
+@SCENE id=plaza time=evening weather=rain
+
+@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2
+@SPAWN_WALKWAY id=plaza_rain_lane_left from=(10, 5.55) to=(28, 5.55) width=1.2
+@SPAWN_WALKWAY id=plaza_rain_lane_right from=(10, 6.15) to=(28, 6.15) width=1.2
+@SPAWN_WALKWAY id=plaza_rain_north_left from=(19.5, 5.85) to=(19.5, 10) width=1.2
+@SPAWN_WALKWAY id=plaza_rain_north_right from=(20.5, 5.85) to=(20.5, 10) width=1.2
+@SPAWN_WALKWAY id=rain_west_lane_left from=(19.5, 10) to=(5, 10) width=1.2
+@SPAWN_WALKWAY id=rain_west_lane_right from=(20.5, 10) to=(6, 10) width=1.2
+
+@LAYOUT id=plaza_rain_row
+@SPAWN_PROP prop=supermarket id=shop_1 at=(14, 10.6) state=open
+@SPAWN_PROP prop=shop_door id=shop_door_1 at=(14.2, 10.6) state=open
+@SPAWN_PROP prop=home_door id=mira_home_door at=(5.2, 10.6) state=open
+@SPAWN_PROP prop=home_door id=chen_home_door at=(6.3, 10.6) state=open
+
+@ENTER actor=old_chen at=(14.8, 10) facing=south
+@SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0.4, 0) state=open
+@MOVE_TO actor=mira to=(14.5, 10) duration=0
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「陈伯，送给您。」
@@ -161,8 +199,8 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(5.2, 9.85)
-  @MOVE_TO actor=old_chen to=(6.3, 9.85)
+  @MOVE_TO actor=mira to=(5.2, 10)
+  @MOVE_TO actor=old_chen to=(6.3, 10)
 @END
 
 @NARRATION duration=2.5
