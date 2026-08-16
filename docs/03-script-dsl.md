@@ -315,6 +315,9 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 2. 不得使用目录外 ID。
 3. 不得使用科学计数法（`1e3`）。
 4. 同一 `@PARALLEL` 块内，同一 `actor` 不得有两条 `@MOVE_TO`（`E_CONFLICTING_MOVE`）。
+5. 同一 `@PARALLEL` 块内，同一 `actor` 不得同时有 `@MOVE_TO` 与 `@PLAY_ANIM`（`E_CONFLICTING_ACTION`）。
+6. `@DIALOGUE` 块活跃期间，该块的 `speaker` 不得出现在任何 `@MOVE_TO` / `@PLAY_ANIM` 中（`E_SPEAKER_BUSY`）。**非 speaker 不受限**（见 ADR-002）。
+7. 不得 `@SPAWN_PROP prop=letter`（`E_PROP_NOT_PLACEABLE`）；`letter` 仅能通过 `@GIVE` 交给角色。
 
 ---
 
@@ -328,7 +331,10 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 | `E_UNKNOWN_PROP` | error | 道具不在目录 |
 | `E_UNKNOWN_SCENE` | error | 场景不在目录 |
 | `E_OUT_OF_BOUNDS` | error | 坐标越界 |
-| `E_CONFLICTING_MOVE` | error | 并行移动冲突 |
+| `E_CONFLICTING_MOVE` | error | 并行双 `@MOVE_TO` |
+| `E_CONFLICTING_ACTION` | error | 并行 `@MOVE_TO` + `@PLAY_ANIM` 同 actor |
+| `E_SPEAKER_BUSY` | error | `@DIALOGUE` 说话者同时移动/播动画 |
+| `E_PROP_NOT_PLACEABLE` | error | 道具不可放置（如 `letter`） |
 | `E_NEST_TOO_DEEP` | error | 嵌套过深 |
 | `E_ACTOR_NOT_PRESENT` | error | 角色未入场 |
 | `E_ACTOR_ALREADY_PRESENT` | error | 重复入场 |

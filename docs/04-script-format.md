@@ -61,7 +61,7 @@ language: zh-CN
 | `cast` | actor_id[] | 是 | 参演角色，须 ⊆ 目录 |
 | `scenes` | scene_id[] | 是 | 使用场景 |
 | `acts` | int | 否 | 幕数，可与正文 `@ACT` 校验 |
-| `duration_estimate` | number | 是 | 预估秒数 |
+| `duration_estimate` | number | 是 | 预估秒数（**元数据**，与用户实际观看时长无关；跳过对话不修改此值） |
 | `tone` | string | 否 | 基调：治愈/悬疑/喜剧… |
 | `author` | string | 否 | `ai` 或用户名 |
 | `created_at` | ISO8601 | 否 | 创建时间 |

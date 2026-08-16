@@ -41,7 +41,9 @@ POST /api/v1/scripts/generate
 Content-Type: application/json
 ```
 
-### 2.2 Request Body
+### 2.2 Request Body（MVP 默认）
+
+用户封面表单仅收集 **title / theme / synopsis / tone**；`constraints` 由系统注入：
 
 ```json
 {
@@ -50,17 +52,17 @@ Content-Type: application/json
     "theme": "温情",
     "synopsis": "雨夜广场，米拉与陈伯的故事……",
     "tone": "治愈",
-    "tags": ["爱情", "小镇"],
     "max_duration_sec": 120,
     "language": "zh-CN"
   },
   "constraints": {
     "dsl_version": "1.0",
     "catalog_version": "1.0.0",
-    "allowed_actors": ["mira", "old_chen", "lily"],
-    "allowed_scenes": ["plaza", "cafe_interior"],
+    "allowed_actors": ["mira", "old_chen"],
+    "allowed_scenes": ["plaza"],
     "required_elements": {
       "min_actors": 2,
+      "max_actors": 2,
       "min_camera_cuts": 1,
       "min_dialogue_blocks": 2
     }
@@ -68,6 +70,8 @@ Content-Type: application/json
   "catalog_snapshot_id": "entities-1.0.0"
 }
 ```
+
+> `lily`、`cafe_interior` 不在 MVP 默认 AI 约束内；可在无 AI 模式手动编写剧本使用。
 
 ### 2.3 字段约束
 
@@ -106,11 +110,18 @@ Content-Type: application/json
 }
 ```
 
-### 3.2 失败（Linter 仍不通过）
+### 3.2 失败（Linter 仍不通过，ADR-004）
+
+3 次重试后 UI 须展示：
+
+1. **lint 报告**（错误列表 + 行号 + suggestion）
+2. **最后一版剧本文本**（可编辑）
+3. **「手动编辑」** 按钮 → 文本框修改后重新 lint → play
 
 ```json
 {
   "status": "lint_failed",
+  "script_text": "...最后一版完整剧本...",
   "lint_report": {
     "passed": false,
     "errors": [
@@ -126,6 +137,14 @@ Content-Type: application/json
   "ai_retries": 3
 }
 ```
+
+### 3.3 生成中 UI 阶段（ADR-004）
+
+| 阶段 | 文案 |
+|------|------|
+| 1 | 「AI 正在编写剧本…」 |
+| 2 | 「正在校验剧本…」 |
+| 3 | 「即将开演…」 |
 
 ---
 

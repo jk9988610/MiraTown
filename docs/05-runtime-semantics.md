@@ -75,7 +75,10 @@ interface RuntimeState {
 
 ### 2.4 冲突检测（编译期）
 
-同一 `@PARALLEL` 块内，同一 `actor` 的两条 `@MOVE_TO` → `E_CONFLICTING_MOVE`（Linter 拒绝）。
+同一 `@PARALLEL` 块内：
+- 同一 `actor` 两条 `@MOVE_TO` → `E_CONFLICTING_MOVE`
+- 同一 `actor` 同时 `@MOVE_TO` 与 `@PLAY_ANIM` → `E_CONFLICTING_ACTION`
+- `@DIALOGUE` 的 `speaker` 出现在并行 `@MOVE_TO`/`@PLAY_ANIM` 中 → `E_SPEAKER_BUSY`
 
 ---
 
@@ -127,7 +130,7 @@ distance(current, target) < ε (0.05 wu) → 到达，snap 到目标，状态→
 
 ### 4.3 路径阻塞
 
-目标不可达 → Runtime 错误 `E_PATH_BLOCKED`，演绎暂停，UI 显示错误。
+目标不可达 → Runtime 错误 `E_PATH_BLOCKED`，演绎**暂停**（见 §11）。
 
 ---
 
@@ -158,16 +161,28 @@ camera = clamp_to_map(camera)
 
 ## 6. 对话语义
 
-### 6.1 `@DIALOGUE auto=false`
+### 6.1 并行规则（ADR-002）
+
+- `@DIALOGUE` 块活跃期间：**非 `speaker`** 的 actor 可正常执行 `@MOVE_TO`、`@PAN` 等（常见于 `@PARALLEL`）。
+- **`speaker` 禁止**在同一 `@DIALOGUE` 块活跃期间出现在 `@MOVE_TO` / `@PLAY_ANIM` 中（Linter：`E_SPEAKER_BUSY`）。
+- `minimal-play.mira` 中 mira 对话时 old_chen 走向她是**合法**模式。
+
+### 6.2 `@DIALOGUE auto=false`
 
 - 每句等待用户点击「下一句」
-- 说话者播放 `talk` 动画；其他角色 `idle`
+- 说话者播放 `talk` 动画；其他角色默认 `idle`（若在移动则保持 walk）
 - 气泡位置：说话者头顶屏幕投影 + offset
 
-### 6.2 `@DIALOGUE auto=true auto_delay=2.5`
+### 6.3 `@DIALOGUE auto=true auto_delay=2.5`
 
 - 每句展示 `auto_delay` 秒后自动跳下一句
 - 用户点击可提前跳下一句
+
+### 6.4 `@NARRATION`
+
+- **阻塞**调度：旁白展示期间不推进其他指令
+- 用户点击可提前结束旁白
+- 与 `@DIALOGUE` 不可并行（同一 `@SEQUENCE` 内顺序执行）
 
 ---
 
@@ -235,7 +250,18 @@ camera = clamp_to_map(camera)
 
 ---
 
-## 10. 与 L3 一致性检查
+## 11. 运行时错误 UX（ADR-002）
+
+| 错误类型 | 行为 |
+|----------|------|
+| `E_PATH_BLOCKED` 等 Runtime 错误 | 暂停演绎；红色错误条 + DSL 行号 + 说明 |
+| 用户操作 | 「从头重播」：`Runtime.reset()` → 重新 `load(IR)`；**不自动续播** |
+
+MVP **不支持** `@ACT` 章节跳转；仅完整从头播放。
+
+---
+
+## 12. 与 L3 一致性检查
 
 - [x] 每条 L3 指令在本表有对应行
 - [x] 所有 `duration` 默认值已定义

@@ -1,7 +1,7 @@
 # 米拉小镇（MiraTown）设计规范 — 合并版
 
-> **版本** 0.1.0 · **DSL** 1.0 · **Catalog** 1.0.0 · **状态** 草案  
-> 本文档由 L0–L7 分层文档合并而成，作为单页参考。细节以各层文件为准。
+> **版本** 0.1.1 · **DSL** 1.0 · **Catalog** 1.0.0 · **状态** Gate 0–3 已闭合  
+> 本文档由 L0–L7 + ADR 决策合并而成。细节以各层文件为准。
 
 ---
 
@@ -15,7 +15,8 @@
 6. [运行时语义](#6-运行时语义)
 7. [AI 接口契约](#7-ai-接口契约)
 8. [技术架构与 MVP](#8-技术架构与-mvp)
-9. [一致性检查清单](#9-一致性检查清单)
+9. [已拍板决策（Gate 0–3）](#9-已拍板决策gate-03)
+10. [一致性检查清单](#10-一致性检查清单)
 
 ---
 
@@ -31,6 +32,12 @@
 | 2 | **一切可检索、可校验** — 固定结构，可索引角色/场次/指令 |
 | 3 | **空间是数学对象** — 坐标、尺寸、时间均为数值 |
 
+### 主要用户与路径
+
+- **观看者为主**：填封面 → 看戏
+- **无 AI 模式**（必需）：加载 `examples/minimal-play.mira` 或粘贴剧本 → lint → play
+- **人工编辑**：AI 生成后可改 `.mira` 文本再播放
+
 ### MVP 验收
 
 - 输入：`title` + `theme` + `synopsis`（≥20 字）
@@ -41,7 +48,7 @@
 
 ### 排除项
 
-AI 不调 API、不生成代码、指令行不含自然语言、无实时改逻辑、无多人在线。
+AI 不调 API、不生成代码、指令行不含自然语言、播放中不可改逻辑（播放前可编辑剧本）、无多人在线、无移动端。
 
 → 详见 [`00-vision.md`](./00-vision.md)
 
@@ -119,7 +126,7 @@ AI 不调 API、不生成代码、指令行不含自然语言、无实时改逻�
 |----|-----|------|------|
 | `bench` | 长椅 | 2.0×1.0 | empty, occupied |
 | `umbrella` | 雨伞 | 0.6×1.2 | closed, open |
-| `letter` | 信 | 0.2×0.15 | sealed, open |
+| `letter` | 信 | 0.2×0.15 | sealed, open — **仅 `@GIVE`，不可 `@SPAWN_PROP`** |
 
 ### 场景
 
@@ -183,11 +190,14 @@ AI 不调 API、不生成代码、指令行不含自然语言、无实时改逻�
 
 - 指令行内自然语言（台词/旁白须在块内）
 - 目录外 ID
-- 同 `@PARALLEL` 块内同一 actor 两条 `@MOVE_TO`
+- 同 `@PARALLEL` 块内同一 actor 两条 `@MOVE_TO`（`E_CONFLICTING_MOVE`）
+- 同 `@PARALLEL` 块内同一 actor `@MOVE_TO` + `@PLAY_ANIM`（`E_CONFLICTING_ACTION`）
+- `@DIALOGUE` 的 **speaker** 在块活跃期间移动/播动画（`E_SPEAKER_BUSY`）；**非 speaker 允许**
+- `@SPAWN_PROP prop=letter`（`E_PROP_NOT_PLACEABLE`）
 
 ### 主要错误码
 
-`E_UNKNOWN_DIRECTIVE` · `E_OUT_OF_BOUNDS` · `E_UNKNOWN_ACTOR` · `E_CONFLICTING_MOVE` · `E_ACTOR_NOT_PRESENT`
+`E_UNKNOWN_DIRECTIVE` · `E_OUT_OF_BOUNDS` · `E_CONFLICTING_MOVE` · `E_CONFLICTING_ACTION` · `E_SPEAKER_BUSY` · `E_PROP_NOT_PLACEABLE`
 
 → 详见 [`03-script-dsl.md`](./03-script-dsl.md)
 
@@ -208,7 +218,7 @@ dsl_version: "1.0"
 catalog_version: "1.0.0"
 cast: [mira, old_chen]
 scenes: [plaza]
-duration_estimate: 90
+duration_estimate: 90  # 元数据；用户跳过对话不修改
 ```
 
 ### 检索 ID
@@ -224,6 +234,17 @@ duration_estimate: 90
 ---
 
 ## 6. 运行时语义
+
+### 对话并行（ADR-002）
+
+- `@DIALOGUE` 期间：**非 speaker** 可 `@MOVE_TO`（如配角走向说话者）
+- **speaker** 禁止同时移动/播动画
+- `@NARRATION` 阻塞，可点击跳过
+
+### 错误与重播
+
+- Runtime 错误 → 暂停 + 红条 + DSL 行号；「从头重播」
+- MVP 无 `@ACT` 跳转
 
 ### 角色状态机
 
@@ -264,19 +285,27 @@ A* on 1 wu 瓦片网格，四方向，不可走区域拒绝（`E_PATH_BLOCKED`�
 用户封面 → AI 生成 .mira → Linter → (失败则带错误重试 ≤3) → compile → play
 ```
 
-### Request 核心字段
+### 用户输入（MVP）
+
+封面表单仅四字段：**title / theme / synopsis / tone**
+
+### Request 默认 constraints
 
 ```json
 {
-  "script_meta": { "title", "theme", "synopsis", "max_duration_sec" },
-  "constraints": {
-    "dsl_version": "1.0",
-    "catalog_version": "1.0.0",
-    "allowed_actors": ["mira", "old_chen"],
-    "allowed_scenes": ["plaza"]
-  }
+  "allowed_actors": ["mira", "old_chen"],
+  "allowed_scenes": ["plaza"],
+  "min_actors": 2, "max_actors": 2
 }
 ```
+
+### Lint 失败 3 次
+
+展示错误报告 + 最后一版剧本 + 「手动编辑」入口
+
+### 生成 UI 文案
+
+「AI 正在编写剧本…」→「正在校验剧本…」→「即将开演…」
 
 ### Prompt 组成
 
@@ -297,20 +326,22 @@ A* on 1 wu 瓦片网格，四方向，不可走区域拒绝（`E_PATH_BLOCKED`�
 | 模块 | 职责 |
 |------|------|
 | **core** | Parser, Linter, Compiler, Runtime |
-| **renderer** | PixiJS/Phaser + Camera |
-| **web** | React 封面表单 + 播放器 |
-| **AI Generator** | Prompt + 重试循环 |
+| **renderer** | **PixiJS** + Camera |
+| **web** | React：封面四字段 + 剧本文本编辑 + 播放器 |
+| **存储** | localStorage |
+| **AI** | serverless 代理 |
 
 ### MVP 切片
 
 | 切片 | 交付 |
 |------|------|
+| **S0** | 无 AI：示例/粘贴剧本 → lint → play |
 | S1 | Parser + Linter 通过 minimal-play |
 | S2 | Headless Runtime + 事件日志 |
-| S3 | 渲染：广场 + 2 角色 + 跟随镜头 |
+| S3 | PixiJS：广场 + 2 角色 + 跟随镜头（1280×720） |
 | S4 | 完整播放 minimal-play |
-| S5 | AI 封面 → 演绎闭环 |
-| S6 | 剧本库搜索与回放 |
+| S5 | AI 封面四字段 → 演绎闭环 |
+| S6 | localStorage 剧本库 |
 
 ### 仓库结构
 
@@ -322,7 +353,22 @@ catalog/  docs/  examples/  packages/{core,renderer,web}/  prompts/
 
 ---
 
-## 9. 一致性检查清单
+## 9. 已拍板决策（Gate 0–3）
+
+| Gate | 关键结论 | ADR |
+|------|----------|-----|
+| 0 | DSL/catalog/坐标冻结；无 AI 模式；可人工编辑剧本 | [ADR-001](./decisions/ADR-001-gate0-protocol-freeze.md) |
+| 1 | 对话时非 speaker 可动；letter 仅 GIVE；错误暂停+重播 | [ADR-002](./decisions/ADR-002-gate1-runtime-semantics.md) |
+| 2 | 纯前端+serverless；PixiJS；1280×720；仅从头回放 | [ADR-003](./decisions/ADR-003-gate2-experience-delivery.md) |
+| 3 | AI 默认 2 人 plaza；lint 失败可手改；zh-CN only | [ADR-004](./decisions/ADR-004-gate3-ai-loop.md) |
+
+**延期 v0.2+**：幕跳转、beat 时间、斜向移动、i18n、可视化编辑器、语音
+
+→ 详见 [`open-questions.md`](./open-questions.md) · 新对话接续 [`DISCUSSION.md`](./DISCUSSION.md)
+
+---
+
+## 10. 一致性检查清单
 
 每次修改文档或 catalog 后确认：
 
@@ -340,5 +386,7 @@ catalog/  docs/  examples/  packages/{core,renderer,web}/  prompts/
 | 文档 | 路径 |
 |------|------|
 | 术语表 | [`glossary.md`](./glossary.md) |
-| 未决问题 | [`open-questions.md`](./open-questions.md) |
+| 议题追踪 | [`open-questions.md`](./open-questions.md) |
+| 新对话接续 | [`DISCUSSION.md`](./DISCUSSION.md) |
+| 决策记录 | [`decisions/`](./decisions/) |
 | 文档索引 | [`README.md`](./README.md) |

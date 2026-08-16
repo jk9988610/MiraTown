@@ -51,7 +51,7 @@ AI 剧本中引用的 `actor`、`prop`、`scene`、`camera preset` **必须来�
 |------|------|
 | `bench` | `occupied` 时不可 `@SPAWN_PROP` 到同格；角色 `@SIT` 关联 |
 | `umbrella` | `open` 状态显示遮罩层；可由 `@SET_PROP` 切换 |
-| `letter` | 只能 `@GIVE` 给角色，不能独立放置于地面（MVP） |
+| `letter` | **只能 `@GIVE`** 给角色；`@SPAWN_PROP prop=letter` 被 Linter 拒绝（`E_PROP_NOT_PLACEABLE`） |
 
 ### 2.2 DSL 引用
 

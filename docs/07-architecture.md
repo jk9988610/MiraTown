@@ -55,12 +55,12 @@ flowchart TB
 | **Linter** | AST + Catalog → 报告 | TypeScript |
 | **Compiler** | AST → IR 树 | TypeScript |
 | **Runtime** | IR 调度、状态机 | TypeScript |
-| **Renderer** | 世界状态 → Canvas/WebGL | PixiJS 或 Phaser |
+| **Renderer** | 世界状态 → Canvas/WebGL | **PixiJS**（已决，ADR-003） |
 | **Camera** | 世界坐标 → 视口变换 | Runtime 子模块 |
 | **Catalog** | 加载 `entities.yaml` | YAML parser |
 | **AI Generator** | Prompt 组装、重试 | OpenAI 兼容 API |
-| **Script Store** | 剧本 CRUD、索引 | SQLite / 文件系统 |
-| **Web UI** | 封面表单、播放器、剧本库 | React + Vite |
+| **Script Store** | 剧本 CRUD、索引 | **浏览器 localStorage**（MVP） |
+| **Web UI** | 封面表单、播放器、剧本文本编辑 | React + Vite |
 
 ---
 
@@ -105,19 +105,22 @@ MiraTown/
 
 | 切片 | 交付物 | 依赖 |
 |------|--------|------|
-| **S1 核心解析** | Parser + Linter 对 `minimal-play.mira` 通过 | L3, L4, catalog |
+| **S0 无 AI 播放** | 加载 `minimal-play.mira` 或粘贴剧本 → lint → play | L3, L4 |
+| **S1 核心解析** | Parser + Linter 对 `minimal-play.mira` 通过 | S0, catalog |
 | **S2 运行时** | 无渲染的 headless Runtime，打印事件日志 | L5 |
-| **S3 渲染** | 广场场景 + 2 角色走动 + 跟随镜头 | L1, renderer |
+| **S3 渲染** | PixiJS：广场 + 2 角色 + 跟随镜头，1280×720 letterbox | L1, renderer |
 | **S4 完整演绎** | 播放 `minimal-play.mira` 全流程 | S1–S3 |
-| **S5 AI 接入** | 封面 → AI → lint → play 闭环 | L6 |
-| **S6 剧本库** | 搜索、列表、回放 | L6 §6 |
+| **S5 AI 接入** | 封面四字段 → AI → lint → play 闭环 | L6 |
+| **S6 剧本库** | localStorage 搜索、列表、重播 | L6 §6 |
 
 ### MVP 不包含
 
 - 用户注册/登录
 - 在线多人
-- 剧本编辑器（可视化）
+- 剧本可视化编辑器
 - 移动端适配
+- `@ACT` 章节跳转（v0.2）
+- beat 时间轴、斜向移动、多语言（v0.2+）
 
 ---
 
@@ -153,13 +156,14 @@ interface Renderer {
 
 ---
 
-## 7. 部署（MVP）
+## 7. 部署（MVP，ADR-003）
 
 | 组件 | 部署 |
 |------|------|
 | Web + Core + Renderer | 静态站点（Vercel / GitHub Pages） |
 | AI 代理 | Serverless Function（隐藏 API Key） |
-| 剧本存储 | 浏览器 localStorage + 可选后端 |
+| 剧本存储 | **浏览器 localStorage** |
+| 无 AI 模式 | 纯前端：示例剧本 + 粘贴 + 本地 lint/play |
 
 ---
 
