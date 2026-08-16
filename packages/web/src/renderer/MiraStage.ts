@@ -80,6 +80,8 @@ interface DepthItem {
 
 export class MiraStage {
   private app: Application | null = null;
+  private mountGeneration = 0;
+  private mounted = false;
   private world = new Container();
   private groundLayer = new Container();
   private puddleLayer = new Container();
@@ -93,9 +95,16 @@ export class MiraStage {
   private lastSceneId: string | null = null;
 
   async mount(container: HTMLElement, overlay: HTMLElement): Promise<void> {
+    const generation = ++this.mountGeneration;
     this.overlayEl = overlay;
-    this.app = new Application();
-    await this.app.init({
+    this.world = new Container();
+    this.groundLayer = new Container();
+    this.puddleLayer = new Container();
+    this.depthLayer = new Container();
+    this.rainLayer = new Container();
+    this.depthGfx.clear();
+    const app = new Application();
+    await app.init({
       width: VIEW_W,
       height: VIEW_H,
       backgroundColor: 0x1a2332,
@@ -104,7 +113,15 @@ export class MiraStage {
       autoDensity: false,
     });
 
-    const canvas = this.app.canvas as HTMLCanvasElement;
+    if (generation !== this.mountGeneration) {
+      app.destroy(true, { children: true });
+      return;
+    }
+
+    this.app = app;
+    this.mounted = true;
+
+    const canvas = app.canvas as HTMLCanvasElement;
     canvas.style.width = '100%';
     canvas.style.height = 'auto';
     canvas.style.display = 'block';
@@ -114,16 +131,23 @@ export class MiraStage {
     this.world.addChild(this.groundLayer);
     this.world.addChild(this.puddleLayer);
     this.world.addChild(this.depthLayer);
-    this.app.stage.addChild(this.world);
-    this.app.stage.addChild(this.rainLayer);
+    app.stage.addChild(this.world);
+    app.stage.addChild(this.rainLayer);
 
     this.drawGround();
   }
 
+  get ready(): boolean {
+    return this.mounted && this.app !== null;
+  }
+
   destroy(): void {
+    this.mountGeneration += 1;
+    this.mounted = false;
     this.depthGfx.clear();
     this.app?.destroy(true, { children: true });
     this.app = null;
+    this.overlayEl = null;
   }
 
   update(snapshot: RuntimeSnapshot): void {
