@@ -69,6 +69,7 @@ export class Runtime {
   private T = 0;
   private t = 0;
   private sceneId: string | null = null;
+  private weather: 'clear' | 'rain' = 'clear';
   private actors = new Map<string, ActorState>();
   private props = new Map<string, PropState>();
   private camera: CameraState = { x: 32, y: 24, zoom: 1, mode: 'fixed', offsetX: 0, offsetY: 0 };
@@ -96,6 +97,7 @@ export class Runtime {
     this.T = 0;
     this.t = 0;
     this.sceneId = null;
+    this.weather = 'clear';
     this.actors.clear();
     this.props.clear();
     this.camera = { x: 32, y: 24, zoom: 1, mode: 'fixed', offsetX: 0, offsetY: 0 };
@@ -157,6 +159,7 @@ export class Runtime {
       T: this.T,
       t: this.t,
       sceneId: this.sceneId,
+      weather: this.weather,
       actors: [...this.actors.values()],
       props: [...this.props.values()].map((p) => ({
         id: p.id,
@@ -394,8 +397,10 @@ export class Runtime {
     switch (node.op) {
       case 'SCENE': {
         this.sceneId = asString(node.params.id) ?? null;
+        const weather = asString(node.params.weather);
+        this.weather = weather === 'rain' ? 'rain' : 'clear';
         this.t = 0;
-        this.log('scene_change', { scene: this.sceneId }, node.line);
+        this.log('scene_change', { scene: this.sceneId, weather: this.weather }, node.line);
         break;
       }
       case 'ENTER': {
