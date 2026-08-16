@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { compileScript, lintScript, parseScript, Runtime } from './index.js';
+import { pickNearestSeat } from './abreast.js';
 import type { WalkwayDef } from './types.js';
 import { interpolateWalkwayMove, walkwayMoveDistance } from './walkway.js';
 import { loadDefaultCatalog } from './catalog-node.js';
@@ -310,7 +311,7 @@ duration_estimate: 30
     }
   });
 
-  it('parallel duo moves keep individual durations', () => {
+  it('abreast parallel moves finish together with aligned foot x', () => {
     const source = `---
 title: t
 theme: x
@@ -323,12 +324,13 @@ duration_estimate: 30
 ---
 @BEGIN
 @SCENE id=plaza
-@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2
-@ENTER actor=mira at=(10, 5.85)
-@ENTER actor=old_chen at=(27, 5.85)
+@SPAWN_WALKWAY id=left from=(10, 5.55) to=(28, 5.55) width=1.2
+@SPAWN_WALKWAY id=right from=(10, 6.15) to=(28, 6.15) width=1.2
+@ENTER actor=mira at=(10, 5.55)
+@ENTER actor=old_chen at=(10.5, 6.15)
 @PARALLEL
-  @MOVE_TO actor=mira to_path=plaza_rain_path x=20
-  @MOVE_TO actor=old_chen to_path=plaza_rain_path x=21
+  @MOVE_TO actor=mira to_path=left x=20
+  @MOVE_TO actor=old_chen to_path=right x=20
 @END
 @END_SCRIPT`;
     const ast = parseScript(source);
@@ -336,12 +338,16 @@ duration_estimate: 30
     runtime.load(compileScript(ast));
     let chenDoneAt = 0;
     let miraDoneAt = 0;
+    let sharedX = true;
     let miraWasWalking = false;
     let chenWasWalking = false;
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < 800; i++) {
       const snap = runtime.tick();
       const mira = snap.actors.find((a) => a.id === 'mira');
       const chen = snap.actors.find((a) => a.id === 'old_chen');
+      if (mira?.state === 'WALKING' && chen?.state === 'WALKING') {
+        if (Math.abs(mira.x - chen.x) > 0.05) sharedX = false;
+      }
       if (mira?.state === 'WALKING') miraWasWalking = true;
       if (chen?.state === 'WALKING') chenWasWalking = true;
       if (!miraDoneAt && miraWasWalking && mira?.state === 'IDLE') miraDoneAt = snap.T;
@@ -349,7 +355,14 @@ duration_estimate: 30
       if (snap.completed) break;
     }
     expect(chenDoneAt).toBeGreaterThan(0);
-    expect(miraDoneAt).toBeGreaterThan(chenDoneAt);
+    expect(miraDoneAt).toBeGreaterThan(0);
+    expect(Math.abs(miraDoneAt - chenDoneAt)).toBeLessThan(0.08);
+    expect(sharedX).toBe(true);
+  });
+
+  it('picks nearest bench seat when sitting', () => {
+    expect(pickNearestSeat(33.3, 34, 3)).toBe(0);
+    expect(pickNearestSeat(34.7, 34, 3)).toBe(1);
   });
 
   it('faces north when walking along vertical walkway', () => {

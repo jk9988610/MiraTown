@@ -14,6 +14,7 @@ export * from './runtime.js';
 export * from './constants.js';
 export * from './bodyProfile.js';
 export * from './walkway.js';
+export * from './abreast.js';
 export * from './layout.js';
 export * from './camera.js';
 

@@ -1,6 +1,7 @@
 import { clampCamera } from './camera.js';
 import { getZoneCenter } from './catalog.js';
 import { DEFAULT_WALK_SPEED, DUO_WALK_SPACING, SIDEWALK_WIDTH } from './constants.js';
+import { createAbreastGroup, pickNearestSeat, tickAbreastGroup, type AbreastGroup } from './abreast.js';
 import { layoutPropFootY } from './layout.js';
 import type { Catalog } from './types.js';
 import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2, WalkwayDef } from './types.js';
@@ -293,9 +294,77 @@ export class Runtime {
         done: false,
       })) as ActiveCoroutine[];
 
-      co.meta = { started: true, children };
+      const moveChildren = children.filter((c) => c.node.op === 'MOVE_TO');
+      let abreast: AbreastGroup | undefined;
+      if (moveChildren.length >= 2) {
+        const members = [];
+        for (const child of moveChildren) {
+          const actorId = asString(child.node.params.actor);
+          const actor = actorId ? this.actors.get(actorId) : undefined;
+          const target = this.resolveMoveTarget(child.node.params);
+          const pathId = this.movePathId(child.node.params);
+          const walkway = pathId ? this.getWalkway(pathId) : undefined;
+          if (actor && target) {
+            members.push({
+              actorId: actorId!,
+              start: { x: actor.x, y: actor.y },
+              target,
+              pathPoints: walkway?.points,
+            });
+          }
+        }
+        if (members.length >= 2) {
+          abreast = createAbreastGroup(members, DEFAULT_WALK_SPEED);
+          for (const m of members) {
+            this.activeMoveActors.add(m.actorId);
+          }
+          for (const child of moveChildren) {
+            child.meta = { ...(child.meta ?? {}), abreastManaged: true };
+          }
+        }
+      }
+
+      for (const child of children) {
+        if (!child.meta?.started) {
+          child.meta = { ...child.meta, started: true };
+          this.executeStart(child.node, child);
+        }
+      }
+
+      co.meta = { started: true, children, abreast };
     }
+
     const children = co.meta.children as ActiveCoroutine[];
+    const abreast = co.meta.abreast as AbreastGroup | undefined;
+
+    if (abreast && !abreast.finished) {
+      const prevPositions = new Map<string, Vec2>();
+      for (const m of abreast.members) {
+        const a = this.actors.get(m.actorId);
+        if (a) prevPositions.set(m.actorId, { x: a.x, y: a.y });
+      }
+      tickAbreastGroup(abreast, dt, (id, pos, walking) => {
+        const actor = this.actors.get(id);
+        if (!actor) return;
+        const prev = prevPositions.get(id) ?? pos;
+        actor.x = pos.x;
+        actor.y = pos.y;
+        actor.state = walking ? 'WALKING' : 'IDLE';
+        if (walking) this.applyMoveFacing(actor, prev, pos);
+        prevPositions.set(id, pos);
+      });
+      if (abreast.finished) {
+        for (const m of abreast.members) {
+          this.activeMoveActors.delete(m.actorId);
+        }
+        for (const child of children) {
+          if (child.meta?.abreastManaged) child.done = true;
+        }
+      }
+      co.done = children.every((c) => c.done);
+      return;
+    }
+
     let allDone = true;
     for (const child of children) {
       if (!child.done) {
@@ -444,6 +513,8 @@ export class Runtime {
     }
 
     if (node.op === 'MOVE_TO') {
+      if (co.meta?.abreastManaged) return;
+
       const actorId = asString(node.params.actor);
       const actor = actorId ? this.actors.get(actorId) : undefined;
       const target = this.resolveMoveTarget(node.params);
@@ -662,7 +733,7 @@ export class Runtime {
         const actorId = asString(node.params.actor);
         const actor = actorId ? this.actors.get(actorId) : undefined;
         if (actor && co) {
-          const poseEnd = this.resolveSitPose(node.params);
+          const poseEnd = this.resolveSitPose(node.params, actor);
           if (poseEnd) {
             co.meta = { ...co.meta, poseEnd };
             co.duration = asNumber(node.params.duration, 0.5);
@@ -745,13 +816,18 @@ export class Runtime {
     return this.scriptWalkways.get(id) ?? this.catalog.walkways.get(id);
   }
 
-  private resolveSitPose(params: Record<string, ParamValue>): Vec2 | null {
+  private resolveSitPose(params: Record<string, ParamValue>, actor?: ActorState): Vec2 | null {
     const benchId = asString(params.bench);
-    const seat = asNumber(params.seat, 0);
     if (!benchId) return null;
     const bench = this.props.get(benchId);
     const benchDef = this.catalog.props.get('bench');
     if (!bench || !benchDef) return null;
+    let seat = params.seat !== undefined ? asNumber(params.seat) : undefined;
+    if (seat === undefined && actor) {
+      seat = pickNearestSeat(actor.x, bench.x, benchDef.width);
+    } else {
+      seat = seat ?? 0;
+    }
     const seatOffset = seat === 1 ? benchDef.width * 0.22 : -benchDef.width * 0.22;
     return { x: bench.x + seatOffset, y: bench.y + 0.12 };
   }

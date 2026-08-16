@@ -46,12 +46,12 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to_path=plaza_main_lane_left x=33.6
-  @MOVE_TO actor=old_chen to_path=plaza_main_lane_right x=34.2
+  @MOVE_TO actor=mira to_path=plaza_main_lane_left x=33.34
+  @MOVE_TO actor=old_chen to_path=plaza_main_lane_right x=34.66
 @END
 
-@SIT actor=mira bench=bench_1 seat=0
-@SIT actor=old_chen bench=bench_1 seat=1
+@SIT actor=mira bench=bench_1
+@SIT actor=old_chen bench=bench_1
 
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
 「到了，这儿的晚风真舒服。」
