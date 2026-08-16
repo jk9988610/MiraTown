@@ -529,7 +529,9 @@ export class Runtime {
       case 'FACE': {
         const actorId = asString(node.params.actor);
         const actor = actorId ? this.actors.get(actorId) : undefined;
-        if (actor) actor.facing = asString(node.params.facing) ?? actor.facing;
+        if (actor && actor.state !== 'SITTING') {
+          actor.facing = asString(node.params.facing) ?? actor.facing;
+        }
         break;
       }
       case 'SIT': {
@@ -549,6 +551,7 @@ export class Runtime {
             }
           }
           actor.state = 'SITTING';
+          actor.facing = 'south';
           this.log('sit', { actor: actorId, bench: benchId, seat }, node.line);
         }
         break;

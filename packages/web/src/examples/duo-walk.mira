@@ -46,9 +46,6 @@ language: zh-CN
 @SIT actor=mira bench=bench_1 seat=0
 @SIT actor=old_chen bench=bench_1 seat=1
 
-@FACE actor=mira facing=north
-@FACE actor=old_chen facing=north
-
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
 「到了，这儿的晚风真舒服。」
 @END

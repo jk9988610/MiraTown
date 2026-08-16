@@ -44,8 +44,6 @@ language: zh-CN
 
 @MOVE_TO actor=old_chen to=(24, 6) speed=1.2
 
-@FACE actor=mira facing=west
-
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
 「年轻人，伞借你一半。」
 @END
