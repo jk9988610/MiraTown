@@ -39,6 +39,22 @@ button.primary {
   border-color: #2f6fed;
 }
 
+button.active-example {
+  background: #243040;
+  border-color: #4a6a9a;
+}
+
+.events-hint {
+  font-size: 0.8rem;
+  color: #6d7f96;
+  margin: 0 0 0.5rem;
+}
+
+.event-count {
+  color: #6d7f96;
+  font-size: 0.85em;
+}
+
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -185,29 +201,37 @@ textarea {
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  padding: 1.5rem;
+  padding: 0 2rem 2rem;
 }
 
-.stage-overlay .bubble {
-  background: rgba(10, 16, 24, 0.92);
-  border: 1px solid #3d5168;
-  border-radius: 12px;
-  padding: 0.75rem 1rem;
-  max-width: 480px;
-  color: #e7ecf3;
-}
-
-.stage-overlay .bubble p {
-  margin: 0.35rem 0 0;
-}
-
-.stage-overlay .narration {
-  align-self: flex-start;
-  background: rgba(10, 16, 24, 0.85);
-  padding: 0.5rem 1rem;
+.stage-overlay .subtitle {
+  width: 100%;
+  max-width: 720px;
+  text-align: center;
+  background: rgba(8, 12, 18, 0.82);
+  border: 1px solid rgba(80, 110, 150, 0.35);
   border-radius: 8px;
-  color: #c9d6e8;
+  padding: 0.65rem 1.25rem;
+  color: #e7ecf3;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.stage-overlay .subtitle-speaker {
+  display: block;
+  font-size: 0.8rem;
+  color: #7eb6ff;
+  margin-bottom: 0.25rem;
+}
+
+.stage-overlay .subtitle-line {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.stage-overlay .subtitle-narration .subtitle-line {
   font-style: italic;
+  color: #c9d6e8;
 }
 
 .stage-overlay .runtime-error {

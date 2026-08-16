@@ -108,7 +108,7 @@ scenes:
 camera_presets:
   - id: cam_wide
     display_name: 广场全景
-    zoom: 0.8
+    zoom: 1.0
     offset: { x: 0, y: 0 }
     mode: fixed
   - id: cam_medium
@@ -118,7 +118,7 @@ camera_presets:
     mode: fixed
   - id: cam_close
     display_name: 近景特写
-    zoom: 1.5
+    zoom: 1.0
     offset: { x: 0, y: 0.8 }
     mode: fixed
   - id: cam_follow

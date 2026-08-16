@@ -85,7 +85,7 @@ AI 不调 API、不生成代码、指令行不含自然语言、播放中不可�
 
 | 场景 | 尺寸 (wu) |
 |------|-----------|
-| `plaza` | 32×24 |
+| `plaza` | 64×48 |
 | `cafe_interior` | 16×12 |
 
 ### 摄像机
@@ -125,14 +125,14 @@ AI 不调 API、不生成代码、指令行不含自然语言、播放中不可�
 | id | 名 | 尺寸 | 状态 |
 |----|-----|------|------|
 | `bench` | 长椅 | 2.0×1.0 | empty, occupied |
-| `umbrella` | 雨伞 | 0.6×1.2 | closed, open |
+| `umbrella` | 雨伞 | 2.0×1.8 | closed, open |
 | `letter` | 信 | 0.2×0.15 | sealed, open — **仅 `@GIVE`，不可 `@SPAWN_PROP`** |
 
 ### 场景
 
 | id | 名 | 尺寸 | 环境 |
 |----|-----|------|------|
-| `plaza` | 中心广场 | 32×24 | time, weather |
+| `plaza` | 中心广场 | 64×48 | time, weather |
 | `cafe_interior` | 咖啡馆 | 16×12 | lighting |
 
 ### 镜头预设

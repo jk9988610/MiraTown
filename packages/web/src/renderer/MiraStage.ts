@@ -245,14 +245,20 @@ export class MiraStage {
   private updateOverlay(snapshot: RuntimeSnapshot): void {
     if (!this.overlayEl) return;
     if (snapshot.dialogue) {
+      const speaker = snapshot.dialogue.speaker
+        ? `<span class="subtitle-speaker">${snapshot.dialogue.speaker}</span>`
+        : '';
       this.overlayEl.innerHTML = `
-        <div class="bubble">
-          <strong>${snapshot.dialogue.speaker}</strong>
-          <p>${snapshot.dialogue.line}</p>
+        <div class="subtitle">
+          ${speaker}
+          <p class="subtitle-line">${snapshot.dialogue.line}</p>
         </div>`;
       this.overlayEl.style.display = 'flex';
     } else if (snapshot.narration) {
-      this.overlayEl.innerHTML = `<div class="narration">${snapshot.narration}</div>`;
+      this.overlayEl.innerHTML = `
+        <div class="subtitle subtitle-narration">
+          <p class="subtitle-line">${snapshot.narration}</p>
+        </div>`;
       this.overlayEl.style.display = 'flex';
     } else if (snapshot.error) {
       this.overlayEl.innerHTML = `<div class="runtime-error">${snapshot.error.message} (L${snapshot.error.line})</div>`;

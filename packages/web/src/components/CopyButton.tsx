@@ -52,7 +52,35 @@ export function formatLintReport(
 }
 
 export function formatEvents(events: Array<{ T: number; type: string; detail: Record<string, unknown> }>): string {
-  return events
-    .map((ev) => `T=${ev.T.toFixed(2)} ${ev.type} ${JSON.stringify(ev.detail)}`)
+  return dedupeEvents(events)
+    .map((ev) => {
+      const count = ev.count > 1 ? ` ×${ev.count}` : '';
+      return `T=${ev.T.toFixed(2)} ${ev.type}${count} ${JSON.stringify(ev.detail)}`;
+    })
     .join('\n');
+}
+
+export interface DisplayEvent {
+  T: number;
+  type: string;
+  detail: Record<string, unknown>;
+  count: number;
+}
+
+/** 合并连续相同类型与内容的事件，避免旁白等阻塞指令刷屏 */
+export function dedupeEvents(
+  events: Array<{ T: number; type: string; detail: Record<string, unknown> }>,
+): DisplayEvent[] {
+  const result: DisplayEvent[] = [];
+  for (const ev of events) {
+    const last = result[result.length - 1];
+    const key = `${ev.type}:${JSON.stringify(ev.detail)}`;
+    const lastKey = last ? `${last.type}:${JSON.stringify(last.detail)}` : '';
+    if (last && key === lastKey) {
+      last.count++;
+    } else {
+      result.push({ T: ev.T, type: ev.type, detail: ev.detail, count: 1 });
+    }
+  }
+  return result;
 }

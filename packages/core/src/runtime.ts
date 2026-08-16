@@ -292,7 +292,10 @@ export class Runtime {
     if (node.op === 'NARRATION') {
       const duration = asNumber(node.params.duration, 3);
       this.narration = (node.lines ?? []).join('');
-      this.log('narration', { text: this.narration }, node.line);
+      if (!co.meta?.logged) {
+        this.log('narration', { text: this.narration }, node.line);
+        co.meta = { ...co.meta, logged: true };
+      }
       if (co.elapsed >= duration) {
         this.narration = undefined;
         co.done = true;

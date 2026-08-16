@@ -11,10 +11,19 @@ import {
   type RuntimeSnapshot,
 } from '@miratown/core';
 import { StageView } from './components/StageView';
-import { CopyButton, formatEvents, formatLintReport } from './components/CopyButton';
-import bundledExample from './examples/minimal-play.mira?raw';
+import { CopyButton, dedupeEvents, formatEvents, formatLintReport } from './components/CopyButton';
+import simpleWalkExample from './examples/simple-walk.mira?raw';
+import duoWalkExample from './examples/duo-walk.mira?raw';
+import minimalPlayExample from './examples/minimal-play.mira?raw';
 
 type Stage = 'idle' | 'linting' | 'playing' | 'done' | 'error';
+type ExampleId = 'simple' | 'duo' | 'full';
+
+const EXAMPLES: Record<ExampleId, { label: string; source: string }> = {
+  simple: { label: '入门：单人行走', source: simpleWalkExample },
+  duo: { label: '入门：双人同行', source: duoWalkExample },
+  full: { label: '完整：雨夜告白', source: minimalPlayExample },
+};
 
 export function App() {
   const [source, setSource] = useState('');
@@ -23,26 +32,28 @@ export function App() {
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
   const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [exampleId, setExampleId] = useState<ExampleId>('simple');
   const runtimeRef = useRef<Runtime | null>(null);
   const rafRef = useRef<number>(0);
 
   const catalog = useMemo(() => loadEmbeddedCatalog(), []);
 
-  const loadExample = useCallback(() => {
-    setSource(bundledExample);
+  const loadExample = useCallback((id: ExampleId = exampleId) => {
+    setSource(EXAMPLES[id].source);
+    setExampleId(id);
     setLintReport(null);
     setEvents([]);
     setSnapshot(null);
     setParseError(null);
     setStage('idle');
-  }, []);
+  }, [exampleId]);
 
   useEffect(() => {
-    loadExample();
+    setSource(EXAMPLES.simple.source);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [loadExample]);
+  }, []);
 
   const runLint = useCallback(() => {
     setStage('linting');
@@ -106,13 +117,24 @@ export function App() {
     .filter(Boolean)
     .join('\n\n');
 
+  const displayEvents = useMemo(() => dedupeEvents(events), [events]);
+
   return (
     <div className="app">
       <header>
         <h1>米拉小镇 MiraTown</h1>
         <p className="subtitle">加载剧本 → 校验 → PixiJS 演绎（1280×720）</p>
         <div className="actions">
-          <button type="button" onClick={loadExample}>加载示例剧本</button>
+          {(Object.entries(EXAMPLES) as [ExampleId, { label: string }][]).map(([id, ex]) => (
+            <button
+              key={id}
+              type="button"
+              className={exampleId === id ? 'active-example' : ''}
+              onClick={() => loadExample(id)}
+            >
+              {ex.label}
+            </button>
+          ))}
           <button type="button" onClick={runLint}>校验</button>
           <button type="button" className="primary" onClick={runPlay}>播放</button>
         </div>
@@ -190,14 +212,18 @@ export function App() {
 
       <section className="events">
         <div className="section-head">
-          <h2>事件日志 ({events.length})</h2>
+          <h2>事件日志 ({displayEvents.length}{events.length !== displayEvents.length ? ` / ${events.length} 原始` : ''})</h2>
           {events.length > 0 && <CopyButton text={formatEvents(events)} label="复制日志" />}
         </div>
+        <p className="events-hint">仅供调试：记录场景切换、角色进出、对话句等关键节点，连续重复已折叠。</p>
         <div className="event-list">
-          {events.map((ev, i) => (
+          {displayEvents.map((ev, i) => (
             <div key={i} className="event">
               <span className="t">T={ev.T.toFixed(2)}</span>
-              <span className="type">{ev.type}</span>
+              <span className="type">
+                {ev.type}
+                {ev.count > 1 && <span className="event-count"> ×{ev.count}</span>}
+              </span>
               <span className="detail">{JSON.stringify(ev.detail)}</span>
             </div>
           ))}
