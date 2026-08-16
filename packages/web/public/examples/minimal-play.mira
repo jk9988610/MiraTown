@@ -24,15 +24,18 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@NARRATION duration=2.5
-雨点敲打着广场的石板路，路灯在水洼里碎成一片金光。
-
+@SPAWN_PROP prop=lamp_post id=lamp_1 at=(6, 4) state=on
+@SPAWN_PROP prop=lamp_post id=lamp_2 at=(14, 4) state=on
+@SPAWN_PROP prop=lamp_post id=lamp_3 at=(22, 4) state=on
 @SPAWN_PROP prop=bench id=bench_1 at=(5, 3) state=empty
 
 @ENTER actor=mira at=(8, 5) facing=east
 @ENTER actor=old_chen at=(20, 5) facing=west
 @SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0, 0) state=open
 @CUT preset=cam_follow target=mira
+
+@NARRATION duration=2.5
+雨点敲打着广场的石板路，路灯在水洼里碎成一片金光。
 
 @DIALOGUE speaker=mira auto=true auto_delay=2.5
 「今晚的雨，好像永远不会停。」
@@ -52,7 +55,9 @@ language: zh-CN
 
 @ACT id=2 title="伞下"
 
-@MOVE_TO actor=mira to=(15.5, 5) speed=1.2
+@MOVE_TO actor=mira to=(14.7, 5) speed=1.2
+
+@SET_PROP id=umbrella_1 offset=(0.35, 0)
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「有伞真好，雨声也没那么冷了。」
@@ -63,8 +68,8 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=old_chen to=(20, 8) speed=1.2
-  @MOVE_TO actor=mira to=(18.5, 8) speed=1.2
+  @MOVE_TO actor=old_chen to=(19.6, 8) speed=1.2
+  @MOVE_TO actor=mira to=(19.2, 8) speed=1.2
 @END
 
 @NARRATION duration=2.5

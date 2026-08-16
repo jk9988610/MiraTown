@@ -6,8 +6,8 @@ import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './
 const TICK = 1 / 60;
 /** 默认步行速度（wu/s），未指定 duration 时按路程自动计算 */
 const DEFAULT_WALK_SPEED = 1.2;
-/** 角色脚底中心最小间距（wu），防止堆叠 */
-const MIN_ACTOR_SPACING = 1.0;
+/** 角色脚底中心最小间距（wu），仅防止完全重叠 */
+const MIN_ACTOR_SPACING = 0.45;
 
 interface ActorState {
   id: string;
@@ -214,31 +214,34 @@ export class Runtime {
 
   private runSequence(co: ActiveCoroutine, dt: number): void {
     const children = nodeChildren(co);
-    if (!co.meta?.activeChild) {
+    for (let chain = 0; chain < 64; chain++) {
+      if (!co.meta?.activeChild) {
+        if (co.childIndex >= children.length) {
+          co.done = true;
+          return;
+        }
+        co.meta = {
+          activeChild: {
+            node: children[co.childIndex],
+            childIndex: 0,
+            elapsed: 0,
+            duration: 0,
+            blocking: true,
+            done: false,
+          } as ActiveCoroutine,
+        };
+      }
+
+      const childCo = co.meta.activeChild as ActiveCoroutine;
+      this.stepCoroutine(childCo, dt);
+      if (!childCo.done) return;
+
+      co.childIndex++;
+      co.meta = {};
       if (co.childIndex >= children.length) {
         co.done = true;
         return;
       }
-      co.meta = {
-        activeChild: {
-          node: children[co.childIndex],
-          childIndex: 0,
-          elapsed: 0,
-          duration: 0,
-          blocking: true,
-          done: false,
-        } as ActiveCoroutine,
-      };
-    }
-
-    const childCo = co.meta.activeChild as ActiveCoroutine;
-    this.stepCoroutine(childCo, dt);
-    if (!childCo.done) return;
-
-    co.childIndex++;
-    co.meta = {};
-    if (co.childIndex >= children.length) {
-      co.done = true;
     }
   }
 
@@ -392,11 +395,6 @@ export class Runtime {
       case 'SCENE': {
         this.sceneId = asString(node.params.id) ?? null;
         this.t = 0;
-        const scene = this.sceneId ? this.catalog.scenes.get(this.sceneId) : null;
-        if (scene) {
-          this.camera.x = scene.width / 2;
-          this.camera.y = scene.height / 2;
-        }
         this.log('scene_change', { scene: this.sceneId }, node.line);
         break;
       }
@@ -455,8 +453,14 @@ export class Runtime {
         const id = asString(node.params.id);
         const prop = id ? this.props.get(id) : undefined;
         if (prop) {
-          prop.state = asString(node.params.state) ?? prop.state;
-          this.log('prop_set', { id, state: prop.state }, node.line);
+          const state = asString(node.params.state);
+          if (state) prop.state = state;
+          const offset = asVec2(node.params.offset);
+          if (offset) {
+            prop.offsetX = offset.x;
+            prop.offsetY = offset.y;
+          }
+          this.log('prop_set', { id, state: prop.state, offset }, node.line);
         }
         break;
       }
@@ -530,7 +534,7 @@ export class Runtime {
       case 'PAN':
         return asNumber(node.params.duration, node.op === 'PAN' ? 2 : 0);
       case 'SCENE':
-        return 0.1;
+        return 0;
       case 'NARRATION':
         return asNumber(node.params.duration, 3);
       case 'DIALOGUE':
