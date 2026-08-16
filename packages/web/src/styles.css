@@ -58,6 +58,36 @@ section {
 
 h2 { margin: 0 0 0.75rem; font-size: 1rem; color: #9fb0c7; }
 
+.section-head,
+.debug-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-head h2,
+.debug-block-head h3 {
+  margin: 0;
+}
+
+.copy-btn {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.6rem;
+  flex-shrink: 0;
+}
+
+.debug-block {
+  margin-top: 0.75rem;
+}
+
+.debug-block-head span,
+.debug-block-head h3 {
+  font-size: 0.9rem;
+  color: #9fb0c7;
+}
+
 textarea {
   width: 100%;
   min-height: 420px;

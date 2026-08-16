@@ -11,8 +11,8 @@ import {
   type RuntimeSnapshot,
 } from '@miratown/core';
 import { StageView } from './components/StageView';
-
-const EXAMPLE_URL = `${import.meta.env.BASE_URL}examples/minimal-play.mira`;
+import { CopyButton, formatEvents, formatLintReport } from './components/CopyButton';
+import bundledExample from './examples/minimal-play.mira?raw';
 
 type Stage = 'idle' | 'linting' | 'playing' | 'done' | 'error';
 
@@ -28,10 +28,8 @@ export function App() {
 
   const catalog = useMemo(() => loadEmbeddedCatalog(), []);
 
-  const loadExample = useCallback(async () => {
-    const res = await fetch(EXAMPLE_URL);
-    const text = await res.text();
-    setSource(text);
+  const loadExample = useCallback(() => {
+    setSource(bundledExample);
     setLintReport(null);
     setEvents([]);
     setSnapshot(null);
@@ -40,7 +38,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    void loadExample();
+    loadExample();
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
@@ -93,13 +91,28 @@ export function App() {
     rafRef.current = requestAnimationFrame(loop);
   }, [runLint, catalog]);
 
+  const lintCopyText = lintReport
+    ? formatLintReport(lintReport.passed, lintReport.errors, lintReport.warnings)
+    : '';
+
+  const debugCopyText = [
+    `状态: ${stage}`,
+    parseError ? `解析错误: ${parseError}` : '',
+    lintCopyText,
+    snapshot?.error
+      ? `运行时错误: ${snapshot.error.code} L${snapshot.error.line}: ${snapshot.error.message}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
   return (
     <div className="app">
       <header>
         <h1>米拉小镇 MiraTown</h1>
         <p className="subtitle">加载剧本 → 校验 → PixiJS 演绎（1280×720）</p>
         <div className="actions">
-          <button type="button" onClick={() => void loadExample()}>加载示例剧本</button>
+          <button type="button" onClick={loadExample}>加载示例剧本</button>
           <button type="button" onClick={runLint}>校验</button>
           <button type="button" className="primary" onClick={runPlay}>播放</button>
         </div>
@@ -121,7 +134,12 @@ export function App() {
         </section>
 
         <section>
-          <h2>状态</h2>
+          <div className="section-head">
+            <h2>状态</h2>
+            {(parseError || lintReport || snapshot?.error) && (
+              <CopyButton text={debugCopyText} label="复制调试信息" />
+            )}
+          </div>
           <div className={`status status-${stage}`}>
             {stage === 'idle' && '就绪'}
             {stage === 'linting' && '正在校验…'}
@@ -130,11 +148,22 @@ export function App() {
             {stage === 'error' && '出错'}
           </div>
 
-          {parseError && <pre className="error-box">{parseError}</pre>}
+          {parseError && (
+            <div className="debug-block">
+              <div className="debug-block-head">
+                <span>解析错误</span>
+                <CopyButton text={parseError} />
+              </div>
+              <pre className="error-box">{parseError}</pre>
+            </div>
+          )}
 
           {lintReport && (
-            <div className="lint">
-              <h3>校验 {lintReport.passed ? '✓ 通过' : '✗ 失败'}</h3>
+            <div className="lint debug-block">
+              <div className="debug-block-head">
+                <h3>校验 {lintReport.passed ? '✓ 通过' : '✗ 失败'}</h3>
+                <CopyButton text={lintCopyText} label="复制校验结果" />
+              </div>
               {[...lintReport.errors, ...lintReport.warnings].map((issue, i) => (
                 <div key={i} className={issue.level}>
                   <code>{issue.code}</code> L{issue.line}: {issue.message}
@@ -142,11 +171,28 @@ export function App() {
               ))}
             </div>
           )}
+
+          {snapshot?.error && (
+            <div className="debug-block">
+              <div className="debug-block-head">
+                <span>运行时错误</span>
+                <CopyButton
+                  text={`${snapshot.error.code} L${snapshot.error.line}: ${snapshot.error.message}`}
+                />
+              </div>
+              <pre className="error-box">
+                {snapshot.error.code} L{snapshot.error.line}: {snapshot.error.message}
+              </pre>
+            </div>
+          )}
         </section>
       </div>
 
       <section className="events">
-        <h2>事件日志 ({events.length})</h2>
+        <div className="section-head">
+          <h2>事件日志 ({events.length})</h2>
+          {events.length > 0 && <CopyButton text={formatEvents(events)} label="复制日志" />}
+        </div>
         <div className="event-list">
           {events.map((ev, i) => (
             <div key={i} className="event">
