@@ -29,6 +29,9 @@ const FEMALE_ACTORS = new Set(['mira', 'lily']);
 
 const SKIN = 0xffe0bd;
 const SKIN_SHADOW = 0xe8c9a8;
+const UMBRELLA_CANOPY = 0xc8ccd4;
+const UMBRELLA_EDGE = 0x9aa3b0;
+const UMBRELLA_POLE = 0x7a8088;
 
 type Facing = 'north' | 'south' | 'east' | 'west';
 
@@ -46,6 +49,18 @@ function torsoWidths(baseW: number, female: boolean): TorsoWidths {
   return female
     ? { chest: baseW * 1.16, waist: baseW * 0.44, hip: baseW * 1.32 }
     : { chest: baseW * 1.06, waist: baseW * 0.96, hip: baseW * 1.2 };
+}
+
+function fillHairArc(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  r: number,
+  start: number,
+  end: number,
+  color: number,
+): void {
+  g.arc(cx, cy, r, start, end).fill(color);
 }
 
 function drawFrontTorso(
@@ -94,33 +109,6 @@ function drawBackTorso(
   g.quadraticCurveTo(cx + widths.hip * 0.92, yBot, cx, yBot);
   g.quadraticCurveTo(cx - widths.hip * 0.92, yBot, cx - widths.hip * 0.98, yHip);
   g.bezierCurveTo(cx - widths.waist * 1.04, yWaist, cx - widths.chest * 0.92, yChest + height * 0.12, cx - widths.chest * 0.78, yChest);
-  g.closePath();
-  g.fill(color);
-}
-
-function drawSideTorso(
-  g: Graphics,
-  cx: number,
-  top: number,
-  height: number,
-  widths: TorsoWidths,
-  color: number,
-  dir: 1 | -1,
-): void {
-  const yTop = top + height * 0.04;
-  const yChest = top + height * 0.24;
-  const yWaist = top + height * 0.54;
-  const yHip = top + height * 0.78;
-  const yBot = top + height;
-  const front = (w: number) => cx + dir * w * 0.42;
-  const back = (w: number) => cx - dir * w * 0.3;
-
-  g.moveTo(back(widths.chest), yTop);
-  g.bezierCurveTo(back(widths.chest * 0.7), yTop, front(widths.chest * 0.5), yChest - height * 0.04, front(widths.chest), yChest);
-  g.bezierCurveTo(front(widths.chest), yChest + height * 0.06, front(widths.waist * 0.55), yWaist, back(widths.waist * 0.7), yWaist);
-  g.bezierCurveTo(back(widths.hip * 0.85), yHip, back(widths.hip), yBot, cx - dir * widths.hip * 0.12, yBot);
-  g.lineTo(back(widths.hip * 0.9), yHip);
-  g.bezierCurveTo(back(widths.waist * 0.75), yWaist, back(widths.chest * 0.85), yChest, back(widths.chest), yTop);
   g.closePath();
   g.fill(color);
 }
@@ -527,12 +515,10 @@ export class MiraStage {
 
     g.moveTo(poleXDraw, chestY);
     g.lineTo(poleXDraw, poleTop);
-    g.stroke({ width: 4, color: 0x555555 });
+    g.stroke({ width: 4, color: UMBRELLA_POLE });
     if (prop.state === 'open') {
-      g.arc(canopyCx, poleTop, canopyR, Math.PI, 0);
-      g.fill({ color: 0xcc3333, alpha: 0.92 });
-      g.arc(canopyCx, poleTop, canopyR, Math.PI, 0);
-      g.stroke({ width: 3, color: 0x992222 });
+      g.arc(canopyCx, poleTop, canopyR, Math.PI, 0).fill({ color: UMBRELLA_CANOPY, alpha: 0.94 });
+      g.arc(canopyCx, poleTop, canopyR, Math.PI, 0).stroke({ width: 3, color: UMBRELLA_EDGE });
     }
   }
 
@@ -546,20 +532,18 @@ export class MiraStage {
     const { cx, bodyTop, bodyH, baseW } = pose;
     const widths = torsoWidths(baseW, female);
 
-    if (facing === VIEW_FRONT) {
-      drawFrontTorso(g, cx, bodyTop, bodyH, widths, bodyColor);
-      g.ellipse(cx, bodyTop + bodyH * 0.1, widths.chest * 0.55, bodyH * 0.07);
-      g.fill({ color: SKIN, alpha: 0.4 });
-      return;
-    }
-
     if (facing === VIEW_BACK) {
       drawBackTorso(g, cx, bodyTop, bodyH, widths, this.shade(bodyColor, 0.9));
       return;
     }
 
-    const dir: 1 | -1 = facing === 'east' ? 1 : -1;
-    drawSideTorso(g, cx, bodyTop, bodyH, widths, bodyColor, dir);
+    drawFrontTorso(g, cx, bodyTop, bodyH, widths, bodyColor);
+    if (facing === VIEW_FRONT) {
+      g.ellipse(cx, bodyTop + bodyH * 0.1, widths.chest * 0.55, bodyH * 0.07).fill({
+        color: SKIN,
+        alpha: 0.4,
+      });
+    }
   }
 
   private shade(color: number, factor: number): number {
@@ -581,28 +565,19 @@ export class MiraStage {
     const hr = headR * (sitting ? 0.92 : 1);
 
     if (facing === VIEW_BACK) {
-      g.circle(cx, headCy - hr * 0.05, hr * 1.02);
-      g.fill(hairColor);
-      g.ellipse(cx, headCy + hr * 0.38, hr * 0.68, hr * 0.26);
-      g.fill(SKIN_SHADOW);
+      g.circle(cx, headCy - hr * 0.05, hr * 1.02).fill(hairColor);
+      g.ellipse(cx, headCy + hr * 0.38, hr * 0.68, hr * 0.26).fill(SKIN_SHADOW);
       return;
     }
 
     if (facing === VIEW_FRONT) {
-      g.circle(cx, headCy, hr);
-      g.fill(SKIN);
-      g.arc(cx, headCy - hr * 0.12, hr * 1.02, Math.PI, 0);
-      g.fill(hairColor);
-      g.ellipse(cx - hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4);
-      g.fill(hairColor);
-      g.ellipse(cx + hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4);
-      g.fill(hairColor);
-      g.circle(cx - hr * 0.28, headCy + hr * 0.1, hr * 0.1);
-      g.fill(0x2a2520);
-      g.circle(cx + hr * 0.28, headCy + hr * 0.1, hr * 0.1);
-      g.fill(0x2a2520);
-      g.ellipse(cx, headCy + hr * 0.36, hr * 0.13, hr * 0.06);
-      g.fill(SKIN_SHADOW);
+      g.circle(cx, headCy, hr).fill(SKIN);
+      fillHairArc(g, cx, headCy - hr * 0.12, hr * 1.02, Math.PI, 0, hairColor);
+      g.ellipse(cx - hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4).fill(hairColor);
+      g.ellipse(cx + hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4).fill(hairColor);
+      g.circle(cx - hr * 0.28, headCy + hr * 0.1, hr * 0.1).fill(0x2a2520);
+      g.circle(cx + hr * 0.28, headCy + hr * 0.1, hr * 0.1).fill(0x2a2520);
+      g.ellipse(cx, headCy + hr * 0.36, hr * 0.13, hr * 0.06).fill(SKIN_SHADOW);
       return;
     }
 
@@ -611,16 +586,11 @@ export class MiraStage {
     const faceX = cx + dir * hr * 0.2;
     const backX = cx - dir * hr * 0.2;
 
-    g.ellipse(backX, headCy, hr * 0.76, hr * 0.94);
-    g.fill(hairColor);
-    g.ellipse(faceX, headCy + hr * 0.04, hr * 0.6, hr * 0.8);
-    g.fill(SKIN);
-    g.ellipse(backX - dir * hr * 0.06, headCy - hr * 0.16, hr * 0.4, hr * 0.36);
-    g.fill(hairColor);
-    g.circle(faceX + dir * hr * 0.1, headCy + hr * 0.02, hr * 0.09);
-    g.fill(0x2a2520);
-    g.ellipse(faceX + dir * hr * 0.4, headCy + hr * 0.06, hr * 0.11, hr * 0.07);
-    g.fill(SKIN_SHADOW);
+    g.ellipse(backX, headCy, hr * 0.76, hr * 0.94).fill(hairColor);
+    g.ellipse(faceX, headCy + hr * 0.04, hr * 0.6, hr * 0.8).fill(SKIN);
+    g.ellipse(backX - dir * hr * 0.06, headCy - hr * 0.16, hr * 0.4, hr * 0.36).fill(hairColor);
+    g.circle(faceX + dir * hr * 0.1, headCy + hr * 0.02, hr * 0.09).fill(0x2a2520);
+    g.ellipse(faceX + dir * hr * 0.4, headCy + hr * 0.06, hr * 0.11, hr * 0.07).fill(SKIN_SHADOW);
   }
 
   private drawActor(
