@@ -403,7 +403,9 @@ export class Runtime {
       }
       if (actorId && !co.meta?.moveRegistered) {
         this.activeMoveActors.add(actorId);
-        co.meta = { ...co.meta, moveRegistered: true, start: co.meta?.start ?? { x: actor.x, y: actor.y } };
+        const startPos = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
+        co.meta = { ...co.meta, moveRegistered: true, start: startPos };
+        this.applyMoveFacing(actor, startPos, target);
       }
       const duration = co.duration || 1;
       const progress = Math.min(1, co.elapsed / duration);
@@ -676,6 +678,16 @@ export class Runtime {
     const speed = asNumber(node.params.speed, DEFAULT_WALK_SPEED);
     const dist = Math.hypot(target.x - start.x, target.y - start.y);
     return Math.max(1.5, dist / speed);
+  }
+
+  private applyMoveFacing(actor: ActorState, start: Vec2, target: Vec2): void {
+    const dx = target.x - start.x;
+    const dy = target.y - start.y;
+    if (Math.abs(dx) >= Math.abs(dy) && Math.abs(dx) > 0.02) {
+      actor.facing = dx > 0 ? 'east' : 'west';
+    } else if (Math.abs(dy) > 0.02) {
+      actor.facing = dy > 0 ? 'north' : 'south';
+    }
   }
 
   private syncAttachedPropPosition(id: string): void {
