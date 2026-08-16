@@ -11,6 +11,9 @@ export * from './parser.js';
 export * from './linter.js';
 export * from './compiler.js';
 export * from './runtime.js';
+export * from './constants.js';
+export * from './bodyProfile.js';
+export * from './walkway.js';
 export * from './camera.js';
 
 export function processScript(source: string) {

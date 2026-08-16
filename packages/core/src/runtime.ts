@@ -1,11 +1,17 @@
 import { clampCamera } from './camera.js';
 import { getZoneCenter } from './catalog.js';
+import { DEFAULT_WALK_SPEED, DUO_WALK_SPACING } from './constants.js';
 import type { Catalog } from './types.js';
 import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './types.js';
+import {
+  closestPointOnWalkway,
+  duoWalkPositions,
+  pointAtWalkwayFraction,
+  resolveWalkwayTarget,
+  walkwayFractionAtPoint,
+} from './walkway.js';
 
 const TICK = 1 / 60;
-/** 默认步行速度（wu/s），未指定 duration 时按路程自动计算 */
-const DEFAULT_WALK_SPEED = 2.0;
 
 interface ActorState {
   id: string;
@@ -79,6 +85,7 @@ export class Runtime {
   private narration?: string;
   private ir: IRNode | null = null;
   private activeMoveActors = new Set<string>();
+  private walkwayVisibility = new Map<string, boolean>();
 
   constructor(
     private readonly catalog: Catalog,
@@ -106,6 +113,7 @@ export class Runtime {
     this.dialogue = undefined;
     this.narration = undefined;
     this.activeMoveActors.clear();
+    this.walkwayVisibility.clear();
   }
 
   tick(dt = TICK): RuntimeSnapshot {
@@ -183,6 +191,7 @@ export class Runtime {
       })),
       camera: { ...this.camera },
       mapSize: scene ? { w: scene.width, h: scene.height } : null,
+      walkways: this.sceneWalkwaysSnapshot(),
       dialogue: this.dialogue,
       narration: this.narration,
       completed: this.completed,
@@ -401,17 +410,28 @@ export class Runtime {
         co.done = true;
         return;
       }
+      const pathId = this.movePathId(node.params);
+      const walkway = pathId ? this.catalog.walkways.get(pathId) : undefined;
       if (actorId && !co.meta?.moveRegistered) {
         this.activeMoveActors.add(actorId);
         const startPos = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
-        co.meta = { ...co.meta, moveRegistered: true, start: startPos };
+        co.meta = { ...co.meta, moveRegistered: true, start: startPos, pathId };
         this.applyMoveFacing(actor, startPos, target);
       }
       const duration = co.duration || 1;
       const progress = Math.min(1, co.elapsed / duration);
       const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
-      actor.x = start.x + (target.x - start.x) * progress;
-      actor.y = start.y + (target.y - start.y) * progress;
+      if (walkway) {
+        const startT = walkwayFractionAtPoint(walkway.points, start);
+        const endT = walkwayFractionAtPoint(walkway.points, target);
+        const t = startT + (endT - startT) * progress;
+        const pos = pointAtWalkwayFraction(walkway.points, t);
+        actor.x = pos.x;
+        actor.y = pos.y;
+      } else {
+        actor.x = start.x + (target.x - start.x) * progress;
+        actor.y = start.y + (target.y - start.y) * progress;
+      }
       actor.state = progress < 1 ? 'WALKING' : 'IDLE';
       if (progress >= 1) {
         actor.x = target.x;
@@ -435,6 +455,7 @@ export class Runtime {
         const weather = asString(node.params.weather);
         this.weather = weather === 'rain' ? 'rain' : 'clear';
         this.t = 0;
+        this.initWalkwayVisibility();
         this.log('scene_change', { scene: this.sceneId, weather: this.weather }, node.line);
         break;
       }
@@ -503,6 +524,14 @@ export class Runtime {
             this.syncAttachedPropPosition(id);
           }
           this.log('prop_set', { id, state: prop.state, offset }, node.line);
+        }
+        break;
+      }
+      case 'SET_WALKWAY': {
+        const id = asString(node.params.id);
+        if (id) {
+          this.walkwayVisibility.set(id, asBool(node.params.visible, true));
+          this.log('walkway_set', { id, visible: this.walkwayVisibility.get(id) }, node.line);
         }
         break;
       }
@@ -621,9 +650,60 @@ export class Runtime {
     }
   }
 
+  private initWalkwayVisibility(): void {
+    this.walkwayVisibility.clear();
+    if (!this.sceneId) return;
+    for (const [id, def] of this.catalog.walkways) {
+      if (def.scene === this.sceneId) {
+        this.walkwayVisibility.set(id, def.visible_default);
+      }
+    }
+  }
+
+  private sceneWalkwaysSnapshot(): Array<{ id: string; visible: boolean }> {
+    if (!this.sceneId) return [];
+    const items: Array<{ id: string; visible: boolean }> = [];
+    for (const [id, def] of this.catalog.walkways) {
+      if (def.scene !== this.sceneId) continue;
+      items.push({
+        id,
+        visible: this.walkwayVisibility.get(id) ?? def.visible_default,
+      });
+    }
+    return items;
+  }
+
+  private movePathId(params: Record<string, ParamValue>): string | undefined {
+    return asString(params.to_path) ?? asString(params.on_path);
+  }
+
   private resolveMoveTarget(params: Record<string, ParamValue>): Vec2 | null {
+    const walkwayId = asString(params.to_path);
+    if (walkwayId) {
+      const walkway = this.catalog.walkways.get(walkwayId);
+      if (!walkway) return null;
+      const duoCenter = params.duo_center !== undefined ? asNumber(params.duo_center) : undefined;
+      const duoSide = asString(params.duo_side);
+      if (duoCenter !== undefined && duoSide) {
+        const positions = duoWalkPositions(walkway, duoCenter, DUO_WALK_SPACING);
+        return duoSide === 'left' ? positions.left : positions.right;
+      }
+      return resolveWalkwayTarget(walkway, {
+        at: params.at !== undefined ? asNumber(params.at) : undefined,
+        x: params.x !== undefined ? asNumber(params.x) : undefined,
+        y: params.y !== undefined ? asNumber(params.y) : undefined,
+      });
+    }
+
     const to = asVec2(params.to);
-    if (to) return to;
+    if (to) {
+      const onPath = asString(params.on_path);
+      if (onPath) {
+        const walkway = this.catalog.walkways.get(onPath);
+        if (walkway) return closestPointOnWalkway(walkway.points, to);
+      }
+      return to;
+    }
     const zoneId = asString(params.to_zone);
     if (zoneId) {
       const zone = this.catalog.zones.get(zoneId);

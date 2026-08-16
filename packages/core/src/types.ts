@@ -67,7 +67,10 @@ export interface ActorDef {
   anchor: string;
   animations: string[];
   tags: string[];
+  body_profile?: BodyProfile;
 }
+
+export type BodyProfile = 'female' | 'male';
 
 export interface PropDef {
   id: string;
@@ -103,6 +106,14 @@ export interface ZoneDef {
   rect: { x: number; y: number; w: number; h: number };
 }
 
+export interface WalkwayDef {
+  id: string;
+  scene: string;
+  points: Vec2[];
+  width: number;
+  visible_default: boolean;
+}
+
 export interface Catalog {
   catalog_version: string;
   actors: Map<string, ActorDef>;
@@ -110,6 +121,7 @@ export interface Catalog {
   scenes: Map<string, SceneDef>;
   camera_presets: Map<string, CameraPresetDef>;
   zones: Map<string, ZoneDef>;
+  walkways: Map<string, WalkwayDef>;
 }
 
 export type IROp =
@@ -131,6 +143,7 @@ export type IROp =
   | 'SPAWN_PROP'
   | 'DESPAWN_PROP'
   | 'SET_PROP'
+  | 'SET_WALKWAY'
   | 'GIVE'
   | 'CAMERA'
   | 'CUT'
@@ -172,6 +185,7 @@ export interface RuntimeSnapshot {
   }>;
   camera: { x: number; y: number; zoom: number; mode: string; target?: string };
   mapSize: { w: number; h: number } | null;
+  walkways: Array<{ id: string; visible: boolean }>;
   dialogue?: { speaker: string; line: string };
   narration?: string;
   completed: boolean;

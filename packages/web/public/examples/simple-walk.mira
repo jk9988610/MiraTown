@@ -24,7 +24,7 @@ language: zh-CN
 @CAST actor=mira
 
 @SPAWN_PROP prop=lamp_post id=lamp_1 at=(30, 26) state=on
-@SPAWN_PROP prop=bench id=bench_1 at=(32, 26) state=empty
+@SPAWN_PROP prop=bench id=bench_1 at=(34, 26) state=empty
 
 @ENTER actor=mira at=(22, 24) facing=south
 
@@ -32,7 +32,7 @@ language: zh-CN
 「路灯下有条长椅，过去坐坐。」
 @END
 
-@MOVE_TO actor=mira to=(31, 26)
+@MOVE_TO actor=mira to_path=plaza_main_path x=31
 
 @SIT actor=mira bench=bench_1 seat=0
 
