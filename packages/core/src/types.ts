@@ -114,6 +114,16 @@ export interface WalkwayDef {
   visible_default: boolean;
 }
 
+export interface SceneLayoutDef {
+  id: string;
+  scene: string;
+  walkway_id: string;
+  sidewalk_center_y: number;
+  sidewalk_width: number;
+  lamps: Array<{ x: number }>;
+  bench: { x: number };
+}
+
 export interface Catalog {
   catalog_version: string;
   actors: Map<string, ActorDef>;
@@ -122,6 +132,7 @@ export interface Catalog {
   camera_presets: Map<string, CameraPresetDef>;
   zones: Map<string, ZoneDef>;
   walkways: Map<string, WalkwayDef>;
+  scene_layouts: Map<string, SceneLayoutDef>;
 }
 
 export type IROp =

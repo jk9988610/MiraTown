@@ -24,11 +24,11 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@SPAWN_PROP prop=lamp_post id=lamp_1 at=(32, 26) state=on
-@SPAWN_PROP prop=bench id=bench_1 at=(34, 26) state=empty
+@SPAWN_PROP prop=lamp_post id=lamp_1 at=(32, 25.25) state=on
+@SPAWN_PROP prop=bench id=bench_1 at=(34, 25.25) state=empty
 
-@ENTER actor=mira at=(26, 24) facing=south
-@ENTER actor=old_chen at=(28, 24) facing=south
+@ENTER actor=mira at=(31.5, 25.85) facing=south
+@ENTER actor=old_chen at=(32.5, 25.85) facing=south
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「陈伯，我们去路灯下坐坐吧。」

@@ -5,6 +5,7 @@ import type {
   Catalog,
   PropDef,
   SceneDef,
+  SceneLayoutDef,
   WalkwayDef,
   ZoneDef,
 } from './types.js';
@@ -17,6 +18,7 @@ interface RawCatalog {
   camera_presets: CameraPresetDef[];
   zones: ZoneDef[];
   walkways?: WalkwayDef[];
+  scene_layouts?: SceneLayoutDef[];
 }
 
 function toMap<T extends { id: string }>(items: T[]): Map<string, T> {
@@ -32,6 +34,7 @@ export function loadCatalogFromObject(raw: RawCatalog): Catalog {
     camera_presets: toMap(raw.camera_presets),
     zones: toMap(raw.zones),
     walkways: toMap(raw.walkways ?? []),
+    scene_layouts: toMap(raw.scene_layouts ?? []),
   };
 }
 
@@ -178,6 +181,25 @@ walkways:
       - { x: 20.5, y: 10 }
     width: 1.2
     visible_default: true
+
+scene_layouts:
+  - id: plaza_rain_row
+    scene: plaza
+    walkway_id: plaza_rain_path
+    sidewalk_center_y: 5.85
+    sidewalk_width: 1.2
+    lamps:
+      - { x: 12 }
+      - { x: 22 }
+    bench: { x: 11 }
+  - id: plaza_main_row
+    scene: plaza
+    walkway_id: plaza_main_path
+    sidewalk_center_y: 25.85
+    sidewalk_width: 1.2
+    lamps:
+      - { x: 32 }
+    bench: { x: 34 }
 `;
 
 export function loadEmbeddedCatalog(): Catalog {

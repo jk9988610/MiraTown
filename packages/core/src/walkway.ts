@@ -82,6 +82,47 @@ export function walkwayFractionAtPoint(points: Vec2[], p: Vec2): number {
   return 1;
 }
 
+export function distanceToWalkway(points: Vec2[], p: Vec2): number {
+  const closest = closestPointOnWalkway(points, p);
+  return Math.hypot(p.x - closest.x, p.y - closest.y);
+}
+
+const ON_PATH_EPS = 0.08;
+
+/** 路径移动距离：离道时按直线，在道上时按弧长 */
+export function walkwayMoveDistance(points: Vec2[], start: Vec2, target: Vec2): number {
+  const startOn = distanceToWalkway(points, start) <= ON_PATH_EPS;
+  const targetOn = distanceToWalkway(points, target) <= ON_PATH_EPS;
+  if (startOn && targetOn) {
+    const total = walkwayTotalLength(points);
+    const startT = walkwayFractionAtPoint(points, start);
+    const endT = walkwayFractionAtPoint(points, target);
+    return Math.abs(endT - startT) * total;
+  }
+  return Math.hypot(target.x - start.x, target.y - start.y);
+}
+
+/** 路径移动插值：离道时直线走过去，在道上时沿弧长行走 */
+export function interpolateWalkwayMove(
+  points: Vec2[],
+  start: Vec2,
+  target: Vec2,
+  progress: number,
+): Vec2 {
+  const startOn = distanceToWalkway(points, start) <= ON_PATH_EPS;
+  const targetOn = distanceToWalkway(points, target) <= ON_PATH_EPS;
+  if (startOn && targetOn) {
+    const startT = walkwayFractionAtPoint(points, start);
+    const endT = walkwayFractionAtPoint(points, target);
+    const t = startT + (endT - startT) * progress;
+    return pointAtWalkwayFraction(points, t);
+  }
+  return {
+    x: start.x + (target.x - start.x) * progress,
+    y: start.y + (target.y - start.y) * progress,
+  };
+}
+
 export function resolveWalkwayTarget(
   walkway: WalkwayDef,
   params: { at?: number; x?: number; y?: number },
