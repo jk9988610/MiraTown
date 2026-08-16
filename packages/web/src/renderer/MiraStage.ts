@@ -502,6 +502,24 @@ export class MiraStage {
         });
         continue;
       }
+
+      if (prop.prop === 'shop_shelf') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(prop.y, -0.1),
+          draw: (g) => this.drawShopShelf(g, prop.x, prop.y, prop.state === 'stocked'),
+        });
+        continue;
+      }
+
+      if (prop.prop === 'checkout_counter') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(prop.y, -0.05),
+          draw: (g) => this.drawCheckoutCounter(g, prop.x, prop.y),
+        });
+        continue;
+      }
     }
 
     for (const actor of snapshot.actors) {
@@ -580,6 +598,50 @@ export class MiraStage {
       g.roundRect(r.left, r.top, r.width, r.height, 2);
       g.fill(0x5a4a3a);
     }
+  }
+
+  private drawShopShelf(g: Graphics, x: number, y: number, stocked: boolean): void {
+    const size = this.propSize('shop_shelf');
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    g.roundRect(r.left, r.top, r.width, r.height, 3);
+    g.fill(0x6a5a48);
+    g.rect(r.left + 6, r.top + 10, r.width - 12, 8);
+    g.fill(0x8a7a68);
+    g.rect(r.left + 6, r.top + r.height * 0.45, r.width - 12, 8);
+    g.fill(0x8a7a68);
+    if (stocked) {
+      const scarfW = this.propSize('scarf').w * PX_PER_WU;
+      const scarfY = r.top + r.height * 0.2;
+      g.moveTo(r.centerX - scarfW * 0.3, scarfY);
+      g.bezierCurveTo(
+        r.centerX - scarfW * 0.45,
+        scarfY + 14,
+        r.centerX - scarfW * 0.15,
+        scarfY + 28,
+        r.centerX,
+        scarfY + 32,
+      );
+      g.bezierCurveTo(
+        r.centerX + scarfW * 0.2,
+        scarfY + 22,
+        r.centerX + scarfW * 0.35,
+        scarfY + 8,
+        r.centerX + scarfW * 0.25,
+        scarfY,
+      );
+      g.fill(0xc94e6a);
+    }
+  }
+
+  private drawCheckoutCounter(g: Graphics, x: number, y: number): void {
+    const size = this.propSize('checkout_counter');
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    g.roundRect(r.left, r.top, r.width, r.height, 3);
+    g.fill(0x5a6a78);
+    g.rect(r.left + 8, r.top + 6, r.width - 16, r.height * 0.35);
+    g.fill(0x3a4550);
+    g.rect(r.left + r.width * 0.65, r.top + 8, r.width * 0.22, r.height * 0.28);
+    g.fill(0x2a3540);
   }
 
   private drawScarf(

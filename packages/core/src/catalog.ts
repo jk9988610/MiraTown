@@ -70,6 +70,14 @@ actors:
     body_profile: female
     animations: [idle, walk, jump, talk]
     tags: [居民, 孩子]
+  - id: cashier
+    display_name: 收银员
+    width: 0.85
+    height: 1.65
+    anchor: foot
+    body_profile: male
+    animations: [idle, talk]
+    tags: [店员]
 
 props:
   - id: bench
@@ -136,6 +144,22 @@ props:
     placeable: true
     states: [folded, worn]
     tags: [手持]
+  - id: shop_shelf
+    display_name: 货架
+    width: 2.4
+    height: 1.8
+    anchor: foot
+    placeable: true
+    states: [stocked, empty]
+    tags: [家具]
+  - id: checkout_counter
+    display_name: 收银台
+    width: 2.0
+    height: 1.0
+    anchor: foot
+    placeable: true
+    states: [open, closed]
+    tags: [家具]
 
 scenes:
   - id: plaza
@@ -150,6 +174,13 @@ scenes:
     display_name: 街角咖啡馆
     width: 16
     height: 12
+    default_camera: cam_medium
+    env:
+      lighting: [warm_light, dim]
+  - id: supermarket_interior
+    display_name: 超市内景
+    width: 12
+    height: 10
     default_camera: cam_medium
     env:
       lighting: [warm_light, dim]
