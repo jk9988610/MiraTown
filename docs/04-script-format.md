@@ -93,8 +93,7 @@ Linter 校验：
 @NARRATION duration=3
 雨点敲打着广场的石板路，路灯在水洼里碎成一片金光。
 
-@SPAWN_PROP prop=bench id=bench_1 at=(4, 3) state=empty
-@SPAWN_PROP prop=umbrella id=umbrella_1 at=(20, 6) state=closed
+@SPAWN_PROP prop=bench id=bench_1 at=(5, 3) state=empty
 
 @ENTER actor=mira at=(8, 5) facing=east
 @ENTER actor=old_chen at=(20, 6) facing=west
@@ -117,7 +116,7 @@ Linter 校验：
 「年轻人，伞借你一半。」
 @END
 
-@SET_PROP id=umbrella_1 state=open
+@SPAWN_PROP prop=umbrella id=umbrella_1 at=(12, 5) state=open
 @PLAY_ANIM actor=old_chen anim=nod duration=1
 
 @CAMERA preset=cam_close target=mira duration=1.5
@@ -136,7 +135,7 @@ Linter 校验：
 @END
 
 @NARRATION duration=4
-两把伞在雨中合成一个温暖的圆，广场的灯光忽然变得柔和起来。
+两个人肩并肩站在雨中，广场的灯光忽然变得柔和起来。
 
 @EXIT actor=old_chen duration=1
 @EXIT actor=mira duration=1

@@ -7,22 +7,31 @@ const MAP_H = 24;
 const VIEW_W = 1280;
 const VIEW_H = 720;
 
+/** 实体尺寸（与 catalog/entities.yaml 一致），锚点均为脚底中心 */
+const SIZES = {
+  mira: { w: 0.8, h: 1.6 },
+  old_chen: { w: 0.9, h: 1.7 },
+  lily: { w: 0.7, h: 1.5 },
+  bench: { w: 2.0, h: 1.0 },
+  umbrella: { w: 0.6, h: 1.2 },
+  letter: { w: 0.2, h: 0.15 },
+} as const;
+
 const ACTOR_COLORS: Record<string, number> = {
   mira: 0x5b9cff,
   old_chen: 0x9aa5b1,
   lily: 0xff8fcb,
 };
 
-const PROP_COLORS: Record<string, number> = {
-  bench: 0x8b5a2b,
-  umbrella: 0xcc3333,
-  letter: 0xf5e6c8,
-};
-
-function worldToScreen(x: number, y: number): { x: number; y: number } {
+/** 脚底中心 (cx, groundY) → 屏幕像素矩形（Pixi 坐标系，Y 向下） */
+function footRect(cx: number, groundY: number, widthWu: number, heightWu: number) {
   return {
-    x: x * PX_PER_WU,
-    y: (MAP_H - y) * PX_PER_WU,
+    left: (cx - widthWu / 2) * PX_PER_WU,
+    top: (MAP_H - groundY - heightWu) * PX_PER_WU,
+    width: widthWu * PX_PER_WU,
+    height: heightWu * PX_PER_WU,
+    centerX: cx * PX_PER_WU,
+    groundY: (MAP_H - groundY) * PX_PER_WU,
   };
 }
 
@@ -37,7 +46,6 @@ export class MiraStage {
   private propGfx = new Map<string, Graphics>();
   private overlayEl: HTMLElement | null = null;
   private weather: 'clear' | 'rain' = 'clear';
-  private rainDrops: Graphics[] = [];
 
   async mount(container: HTMLElement, overlay: HTMLElement): Promise<void> {
     this.overlayEl = overlay;
@@ -47,11 +55,16 @@ export class MiraStage {
       height: VIEW_H,
       backgroundColor: 0x1a2332,
       antialias: true,
-      resolution: Math.min(window.devicePixelRatio || 1, 2),
-      autoDensity: true,
+      resolution: 1,
+      autoDensity: false,
     });
 
-    container.replaceChildren(this.app.canvas);
+    const canvas = this.app.canvas as HTMLCanvasElement;
+    canvas.style.width = '100%';
+    canvas.style.height = 'auto';
+    canvas.style.display = 'block';
+    canvas.style.aspectRatio = '16 / 9';
+    container.replaceChildren(canvas);
 
     this.world.addChild(this.groundLayer);
     this.world.addChild(this.propLayer);
@@ -65,7 +78,6 @@ export class MiraStage {
   destroy(): void {
     this.actorGfx.clear();
     this.propGfx.clear();
-    this.rainDrops = [];
     this.app?.destroy(true, { children: true });
     this.app = null;
   }
@@ -73,9 +85,7 @@ export class MiraStage {
   update(snapshot: RuntimeSnapshot): void {
     if (!this.app) return;
 
-    if (snapshot.sceneId === 'plaza') {
-      this.weather = 'rain';
-    }
+    this.weather = snapshot.sceneId === 'plaza' ? 'rain' : 'clear';
 
     this.drawActors(snapshot);
     this.drawProps(snapshot);
@@ -89,19 +99,19 @@ export class MiraStage {
     const g = new Graphics();
     for (let tx = 0; tx < MAP_W; tx++) {
       for (let ty = 0; ty < MAP_H; ty++) {
-        const wx = tx;
-        const wy = MAP_H - 1 - ty;
-        const p = worldToScreen(wx + 0.5, wy + 0.5);
+        const wx = tx + 0.5;
+        const wy = MAP_H - ty - 0.5;
+        const r = footRect(wx, wy, 1, 1);
         const checker = (tx + ty) % 2 === 0;
-        g.rect(p.x - PX_PER_WU / 2, p.y - PX_PER_WU / 2, PX_PER_WU, PX_PER_WU);
+        g.rect(r.left, r.top, r.width, r.height);
         g.fill(checker ? 0x2d4a3e : 0x264038);
       }
     }
     this.groundLayer.addChild(g);
 
     const plaza = new Graphics();
-    const center = worldToScreen(16, 12);
-    plaza.circle(center.x, center.y, 120);
+    const center = footRect(16, 12, 0.1, 0.1);
+    plaza.circle(center.centerX, center.groundY - 80, 120);
     plaza.fill({ color: 0x3a5a4a, alpha: 0.35 });
     this.groundLayer.addChild(plaza);
   }
@@ -117,13 +127,12 @@ export class MiraStage {
         this.actorLayer.addChild(g);
       }
       g.clear();
+      const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
+      const r = footRect(actor.x, actor.y, size.w, size.h);
       const color = ACTOR_COLORS[actor.id] ?? 0xffffff;
-      const w = (actor.id === 'old_chen' ? 0.9 : 0.8) * PX_PER_WU;
-      const h = (actor.id === 'old_chen' ? 1.7 : 1.6) * PX_PER_WU;
-      const foot = worldToScreen(actor.x, actor.y);
-      g.roundRect(foot.x - w / 2, foot.y - h, w, h, 6);
+      g.roundRect(r.left, r.top, r.width, r.height, 6);
       g.fill(color);
-      g.circle(foot.x, foot.y - h + 10, 8);
+      g.circle(r.centerX, r.top + 10, 8);
       g.fill(0xffe0bd);
     }
 
@@ -146,23 +155,24 @@ export class MiraStage {
         this.propLayer.addChild(g);
       }
       g.clear();
-      const color = PROP_COLORS[prop.prop] ?? 0xaaaaaa;
-      const foot = worldToScreen(prop.x, prop.y);
+      const size = SIZES[prop.prop as keyof typeof SIZES] ?? { w: 0.5, h: 0.5 };
+      const r = footRect(prop.x, prop.y, size.w, size.h);
+
       if (prop.prop === 'bench') {
-        g.roundRect(foot.x - PX_PER_WU, foot.y - PX_PER_WU * 0.4, PX_PER_WU * 2, PX_PER_WU * 0.5, 4);
-        g.fill(color);
+        g.roundRect(r.left, r.top, r.width, r.height, 4);
+        g.fill(0x8b5a2b);
       } else if (prop.prop === 'umbrella') {
-        const open = prop.state === 'open';
-        g.moveTo(foot.x, foot.y);
-        g.lineTo(foot.x, foot.y - 40);
+        const poleTop = r.groundY - r.height;
+        g.moveTo(r.centerX, r.groundY);
+        g.lineTo(r.centerX, poleTop);
         g.stroke({ width: 3, color: 0x666666 });
-        if (open) {
-          g.arc(foot.x, foot.y - 40, 22, Math.PI, 0);
+        if (prop.state === 'open') {
+          g.arc(r.centerX, poleTop, r.width * 0.9, Math.PI, 0);
           g.fill({ color: 0xcc3333, alpha: 0.85 });
         }
       } else {
-        g.rect(foot.x - 8, foot.y - 8, 16, 12);
-        g.fill(color);
+        g.rect(r.left, r.top, r.width, r.height);
+        g.fill(0xf5e6c8);
       }
     }
 
@@ -174,12 +184,13 @@ export class MiraStage {
     }
   }
 
+  /** 以镜头焦点为 pivot 缩放，避免地图向角落漂移 */
   private applyCamera(snapshot: RuntimeSnapshot): void {
     const zoom = snapshot.camera.zoom || 1;
-    const cam = worldToScreen(snapshot.camera.x, snapshot.camera.y);
+    const pivot = footRect(snapshot.camera.x, snapshot.camera.y, 0.01, 0.01);
+    this.world.pivot.set(pivot.centerX, pivot.groundY);
+    this.world.position.set(VIEW_W / 2, VIEW_H / 2);
     this.world.scale.set(zoom);
-    this.world.x = VIEW_W / 2 - cam.x * zoom;
-    this.world.y = VIEW_H / 2 - cam.y * zoom;
   }
 
   private drawRain(): void {
