@@ -33,7 +33,9 @@ language: zh-CN
 「路灯下有条长椅，过去坐坐。」
 @END
 
-@MOVE_TO actor=mira to_path=plaza_main_path x=31
+@MOVE_TO actor=mira to_path=plaza_main_path x=32
+
+@MOVE_TO actor=mira to_path=plaza_main_path x=33.8
 
 @SIT actor=mira bench=bench_1 seat=0
 

@@ -70,6 +70,16 @@ function asVec2(v: ParamValue | undefined): Vec2 | undefined {
   return undefined;
 }
 
+/** 按位移主方向决定朝向（纵向优先于横向） */
+function facingFromDelta(dx: number, dy: number): string | null {
+  const eps = 0.01;
+  if (Math.abs(dx) < eps && Math.abs(dy) < eps) return null;
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    return dy < 0 ? 'south' : 'north';
+  }
+  return dx > 0 ? 'east' : 'west';
+}
+
 export class Runtime {
   private T = 0;
   private t = 0;
@@ -403,10 +413,18 @@ export class Runtime {
       const progress = Math.min(1, co.elapsed / duration);
       const start = co.meta.poseStart as Vec2;
       const end = co.meta.poseEnd as Vec2;
+      const prevProgress = Math.max(0, progress - (duration > 0 ? dt / duration : 0));
+      const prev = {
+        x: start.x + (end.x - start.x) * prevProgress,
+        y: start.y + (end.y - start.y) * prevProgress,
+      };
       actor.x = start.x + (end.x - start.x) * progress;
       actor.y = start.y + (end.y - start.y) * progress;
       if (node.op === 'SIT') {
         actor.state = progress < 1 ? 'WALKING' : 'SITTING';
+        if (progress < 1) {
+          this.applyMoveFacing(actor, prev, { x: actor.x, y: actor.y });
+        }
         if (progress >= 1) {
           actor.facing = 'south';
           actor.state = 'SITTING';
@@ -414,6 +432,9 @@ export class Runtime {
         }
       } else {
         actor.state = progress < 1 ? 'WALKING' : 'IDLE';
+        if (progress < 1) {
+          this.applyMoveFacing(actor, prev, { x: actor.x, y: actor.y });
+        }
         if (progress >= 1) {
           actor.state = 'IDLE';
           co.done = true;
@@ -437,18 +458,24 @@ export class Runtime {
         this.activeMoveActors.add(actorId);
         const startPos = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
         co.meta = { ...co.meta, moveRegistered: true, start: startPos, pathId };
-        this.applyMoveFacing(actor, startPos, target);
       }
       const duration = co.duration || 1;
       const progress = Math.min(1, co.elapsed / duration);
+      const prevProgress = Math.max(0, progress - (duration > 0 ? dt / duration : 0));
       const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
-      if (walkway) {
-        const pos = interpolateWalkwayMove(walkway.points, start, target, progress);
-        actor.x = pos.x;
-        actor.y = pos.y;
-      } else {
-        actor.x = start.x + (target.x - start.x) * progress;
-        actor.y = start.y + (target.y - start.y) * progress;
+      const sampleAt = (p: number): Vec2 => {
+        if (walkway) return interpolateWalkwayMove(walkway.points, start, target, p);
+        return {
+          x: start.x + (target.x - start.x) * p,
+          y: start.y + (target.y - start.y) * p,
+        };
+      };
+      const curPos = sampleAt(progress);
+      const prevPos = sampleAt(prevProgress);
+      actor.x = curPos.x;
+      actor.y = curPos.y;
+      if (progress < 1) {
+        this.applyMoveFacing(actor, prevPos, curPos);
       }
       actor.state = progress < 1 ? 'WALKING' : 'IDLE';
       if (progress >= 1) {
@@ -865,18 +892,9 @@ export class Runtime {
     return Math.max(0.05, dist / speed);
   }
 
-  private applyMoveFacing(actor: ActorState, start: Vec2, target: Vec2): void {
-    const dx = target.x - start.x;
-    const dy = target.y - start.y;
-    const eps = 0.04;
-    // 摄像机在 +Z（屏幕方向）：朝 -Y（屏幕近端）为正面 south，朝 +Y 为背面 north
-    if (Math.abs(dx) < eps && Math.abs(dy) > eps) {
-      actor.facing = dy < 0 ? 'south' : 'north';
-      return;
-    }
-    if (Math.abs(dx) >= eps) {
-      actor.facing = dx > 0 ? 'east' : 'west';
-    }
+  private applyMoveFacing(actor: ActorState, from: Vec2, to: Vec2): void {
+    const facing = facingFromDelta(to.x - from.x, to.y - from.y);
+    if (facing) actor.facing = facing;
   }
 
   private syncAttachedPropPosition(id: string): void {
