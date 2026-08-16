@@ -11,7 +11,7 @@ import {
   type RuntimeSnapshot,
 } from '@miratown/core';
 
-const EXAMPLE_URL = '/examples/minimal-play.mira';
+const EXAMPLE_URL = `${import.meta.env.BASE_URL}examples/minimal-play.mira`;
 
 type Stage = 'idle' | 'linting' | 'playing' | 'done' | 'error';
 

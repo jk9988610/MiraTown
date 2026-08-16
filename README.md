@@ -20,8 +20,29 @@ AI 导演驱动的网页演绎游戏：严格数学空间 + DSL 剧本 + 程序�
 
 ```bash
 npm install
-npm run dev          # 启动 Web（S0 无 AI 播放界面）
+npm run dev          # 本地开发 http://localhost:5173
 npm test -w @miratown/core
+npm run build        # 构建（Pages 由 Actions 自动部署）
+```
+
+在线演示（GitHub Pages）：https://jk9988610.github.io/MiraTown/
+
+### Termux 环境
+
+```bash
+pkg install git nodejs-lts -y
+git clone https://github.com/jk9988610/MiraTown.git
+cd MiraTown
+npm install
+npm run dev -- --host 0.0.0.0   # 手机本地访问
+```
+
+日常更新：
+
+```bash
+cd ~/MiraTown    # 你的克隆目录
+git pull origin main
+npm install      # package-lock 有变时再执行
 ```
 
 ## 状态
