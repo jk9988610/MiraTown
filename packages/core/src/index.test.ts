@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { compileScript, lintScript, parseScript, Runtime } from './index.js';
+import { interpolateWalkwayMove } from './walkway.js';
 import { loadDefaultCatalog } from './catalog-node.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -264,6 +265,18 @@ duration_estimate: 30
     const mira = snapshot.actors.find((a) => a.id === 'mira');
     expect(mira?.x).toBeCloseTo(19.5, 1);
     expect(mira?.y).toBeCloseTo(10, 1);
+  });
+
+  it('walks in world space when starting off the walkway', () => {
+    const walkway = catalog.walkways.get('plaza_rain_path')!;
+    const start = { x: 27, y: 6 };
+    const target = { x: 21, y: 5.85 };
+    const mid = interpolateWalkwayMove(walkway.points, start, target, 0.5);
+    expect(mid.y).toBeGreaterThan(5.85);
+    expect(mid.y).toBeLessThan(6);
+    const atStart = interpolateWalkwayMove(walkway.points, start, target, 0);
+    expect(atStart.x).toBeCloseTo(27, 2);
+    expect(atStart.y).toBeCloseTo(6, 2);
   });
 });
 

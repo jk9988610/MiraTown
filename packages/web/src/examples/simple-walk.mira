@@ -23,10 +23,10 @@ language: zh-CN
 
 @CAST actor=mira
 
-@SPAWN_PROP prop=lamp_post id=lamp_1 at=(30, 26) state=on
-@SPAWN_PROP prop=bench id=bench_1 at=(34, 26) state=empty
+@SPAWN_PROP prop=lamp_post id=lamp_1 at=(32, 25.25) state=on
+@SPAWN_PROP prop=bench id=bench_1 at=(34, 25.25) state=empty
 
-@ENTER actor=mira at=(22, 24) facing=south
+@ENTER actor=mira at=(22, 25.85) facing=south
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「路灯下有条长椅，过去坐坐。」

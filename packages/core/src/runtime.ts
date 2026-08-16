@@ -6,9 +6,9 @@ import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './
 import {
   closestPointOnWalkway,
   duoWalkPositions,
-  pointAtWalkwayFraction,
+  interpolateWalkwayMove,
   resolveWalkwayTarget,
-  walkwayFractionAtPoint,
+  walkwayMoveDistance,
 } from './walkway.js';
 
 const TICK = 1 / 60;
@@ -281,7 +281,10 @@ export class Runtime {
       })) as ActiveCoroutine[];
 
       const moveChildren = children.filter((c) => c.node.op === 'MOVE_TO');
-      if (moveChildren.length > 1) {
+      const syncArrival =
+        moveChildren.length > 1 &&
+        moveChildren.every((c) => c.node.params.duo_center !== undefined);
+      if (syncArrival) {
         let maxDur = 0;
         const moveStarts = new Map<ActiveCoroutine, { start: Vec2; target: Vec2 }>();
         for (const child of moveChildren) {
@@ -422,10 +425,7 @@ export class Runtime {
       const progress = Math.min(1, co.elapsed / duration);
       const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
       if (walkway) {
-        const startT = walkwayFractionAtPoint(walkway.points, start);
-        const endT = walkwayFractionAtPoint(walkway.points, target);
-        const t = startT + (endT - startT) * progress;
-        const pos = pointAtWalkwayFraction(walkway.points, t);
+        const pos = interpolateWalkwayMove(walkway.points, start, target, progress);
         actor.x = pos.x;
         actor.y = pos.y;
       } else {
@@ -759,7 +759,11 @@ export class Runtime {
       return asNumber(node.params.duration);
     }
     const speed = asNumber(node.params.speed, DEFAULT_WALK_SPEED);
-    const dist = Math.hypot(target.x - start.x, target.y - start.y);
+    const pathId = this.movePathId(node.params);
+    const walkway = pathId ? this.catalog.walkways.get(pathId) : undefined;
+    const dist = walkway
+      ? walkwayMoveDistance(walkway.points, start, target)
+      : Math.hypot(target.x - start.x, target.y - start.y);
     return Math.max(1.5, dist / speed);
   }
 
