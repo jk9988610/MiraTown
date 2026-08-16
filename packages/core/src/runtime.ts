@@ -4,6 +4,10 @@ import type { Catalog } from './types.js';
 import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './types.js';
 
 const TICK = 1 / 60;
+/** 默认步行速度（wu/s），未指定 duration 时按路程自动计算 */
+const DEFAULT_WALK_SPEED = 1.2;
+/** 角色脚底中心最小间距（wu），防止堆叠 */
+const MIN_ACTOR_SPACING = 1.0;
 
 interface ActorState {
   id: string;
@@ -19,6 +23,9 @@ interface PropState {
   x: number;
   y: number;
   state: string;
+  attach?: string;
+  offsetX: number;
+  offsetY: number;
 }
 
 interface CameraState {
@@ -115,6 +122,9 @@ export class Runtime {
       if (!co.done) this.queue.push(co);
     }
 
+    this.updateAttachedProps();
+    this.separateOverlappingActors();
+
     this.updateFollowCamera(dt);
     this.clampCameraToMap();
 
@@ -148,7 +158,14 @@ export class Runtime {
       t: this.t,
       sceneId: this.sceneId,
       actors: [...this.actors.values()],
-      props: [...this.props.values()],
+      props: [...this.props.values()].map((p) => ({
+        id: p.id,
+        prop: p.prop,
+        x: p.x,
+        y: p.y,
+        state: p.state,
+        ...(p.attach ? { attach: p.attach } : {}),
+      })),
       camera: { ...this.camera },
       mapSize: scene ? { w: scene.width, h: scene.height } : null,
       dialogue: this.dialogue,
@@ -250,9 +267,12 @@ export class Runtime {
   private runLeaf(co: ActiveCoroutine, dt: number): void {
     if (co.done) return;
     const node = co.node;
-    if (co.elapsed === dt) {
-      this.executeStart(node);
-      co.duration = this.estimateDuration(node);
+    if (!co.meta?.started) {
+      co.meta = { ...co.meta, started: true };
+      this.executeStart(node, co);
+      if (co.duration === 0) {
+        co.duration = this.estimateDuration(node);
+      }
     }
 
     if (node.op === 'DIALOGUE') {
@@ -343,7 +363,7 @@ export class Runtime {
       }
       if (actorId && !co.meta?.moveRegistered) {
         this.activeMoveActors.add(actorId);
-        co.meta = { ...co.meta, moveRegistered: true };
+        co.meta = { ...co.meta, moveRegistered: true, start: co.meta?.start ?? { x: actor.x, y: actor.y } };
       }
       const duration = co.duration || 1;
       const progress = Math.min(1, co.elapsed / duration);
@@ -356,6 +376,7 @@ export class Runtime {
         actor.y = target.y;
         actor.state = 'IDLE';
         if (actorId) this.activeMoveActors.delete(actorId);
+        this.separateOverlappingActors();
         co.done = true;
       }
       return;
@@ -366,7 +387,7 @@ export class Runtime {
     }
   }
 
-  private executeStart(node: IRNode): void {
+  private executeStart(node: IRNode, co?: ActiveCoroutine): void {
     switch (node.op) {
       case 'SCENE': {
         this.sceneId = asString(node.params.id) ?? null;
@@ -408,15 +429,26 @@ export class Runtime {
       }
       case 'SPAWN_PROP': {
         const id = asString(node.params.id) ?? `${asString(node.params.prop)}_${this.props.size + 1}`;
-        const at = asVec2(node.params.at) ?? { x: 0, y: 0 };
+        const attach = asString(node.params.attach);
+        const offset = asVec2(node.params.offset) ?? { x: 0, y: 0 };
+        let pos = asVec2(node.params.at) ?? { x: 0, y: 0 };
+        if (attach) {
+          const holder = this.actors.get(attach);
+          if (holder) {
+            pos = { x: holder.x + offset.x, y: holder.y + offset.y };
+          }
+        }
         this.props.set(id, {
           id,
           prop: asString(node.params.prop) ?? '',
-          x: at.x,
-          y: at.y,
+          x: pos.x,
+          y: pos.y,
           state: asString(node.params.state) ?? 'empty',
+          attach,
+          offsetX: offset.x,
+          offsetY: offset.y,
         });
-        this.log('prop_spawn', { id }, node.line);
+        this.log('prop_spawn', { id, attach }, node.line);
         break;
       }
       case 'SET_PROP': {
@@ -465,11 +497,12 @@ export class Runtime {
       case 'MOVE_TO': {
         const actorId = asString(node.params.actor);
         const actor = actorId ? this.actors.get(actorId) : undefined;
-        if (actor) {
+        if (actor && co) {
           const target = this.resolveMoveTarget(node.params);
           if (target) {
-            const co = this.queue.find((q) => q.node === node);
-            if (co) co.meta = { start: { x: actor.x, y: actor.y } };
+            const start = { x: actor.x, y: actor.y };
+            co.meta = { ...co.meta, start };
+            co.duration = this.computeMoveDuration(node, start, target);
           }
         }
         break;
@@ -488,7 +521,7 @@ export class Runtime {
       case 'WAIT':
         return asNumber(node.params.duration, 0);
       case 'MOVE_TO':
-        return asNumber(node.params.duration, 2);
+        return asNumber(node.params.duration, 3);
       case 'EMOTE':
         return asNumber(node.params.duration, 1.5);
       case 'PLAY_ANIM':
@@ -557,6 +590,52 @@ export class Runtime {
     if (pos) {
       this.camera.x = pos.x;
       this.camera.y = pos.y;
+    }
+  }
+
+  private computeMoveDuration(node: IRNode, start: Vec2, target: Vec2): number {
+    if (node.params.duration !== undefined) {
+      return asNumber(node.params.duration);
+    }
+    const speed = asNumber(node.params.speed, DEFAULT_WALK_SPEED);
+    const dist = Math.hypot(target.x - start.x, target.y - start.y);
+    return Math.max(1.5, dist / speed);
+  }
+
+  private updateAttachedProps(): void {
+    for (const prop of this.props.values()) {
+      if (!prop.attach) continue;
+      const holder = this.actors.get(prop.attach);
+      if (!holder) continue;
+      prop.x = holder.x + prop.offsetX;
+      prop.y = holder.y + prop.offsetY;
+    }
+  }
+
+  /** 防止多名角色堆叠在同一坐标 */
+  private separateOverlappingActors(): void {
+    const actors = [...this.actors.values()];
+    for (let i = 0; i < actors.length; i++) {
+      for (let j = i + 1; j < actors.length; j++) {
+        const a = actors[i];
+        const b = actors[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist >= MIN_ACTOR_SPACING) continue;
+        if (dist < 0.001) {
+          dx = 1;
+          dy = 0;
+          dist = 1;
+        }
+        const push = (MIN_ACTOR_SPACING - dist) / 2;
+        const nx = dx / dist;
+        const ny = dy / dist;
+        a.x -= nx * push;
+        a.y -= ny * push;
+        b.x += nx * push;
+        b.y += ny * push;
+      }
     }
   }
 

@@ -271,6 +271,13 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
         pushIssue(ctx, { code: 'E_PROP_NOT_PLACEABLE', line, message: `道具 ${prop} 不可放置` });
       }
       const at = asVec2(params.at);
+      const attach = asString(params.attach);
+      if (!at && !attach) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SPAWN_PROP 需要 at 或 attach' });
+      }
+      if (attach && !ctx.castActors.has(attach)) {
+        pushIssue(ctx, { code: 'E_UNKNOWN_ACTOR', line, message: `附着目标角色 ${attach} 未登记` });
+      }
       if (at) {
         checkBounds(ctx, catalog, at, 'prop', prop, line);
       }

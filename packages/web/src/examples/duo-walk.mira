@@ -2,14 +2,14 @@
 title: 双人同行
 theme: 入门
 synopsis: |
-  米拉与陈伯分别从两侧走向广场中央，演示多人并行移动。
+  米拉与陈伯并肩出发，平行走向广场另一侧，演示多人移动与防堆叠。
 dsl_version: "1.0"
 catalog_version: "1.0.0"
 tags: [入门, 移动, 多人]
 cast: [mira, old_chen]
 scenes: [plaza]
 acts: 1
-duration_estimate: 25
+duration_estimate: 35
 tone: 轻松
 author: example
 language: zh-CN
@@ -17,33 +17,37 @@ language: zh-CN
 
 @BEGIN title="双人同行"
 
-@ACT id=1 title="走向中央"
+@ACT id=1 title="并肩前行"
 
 @SCENE id=plaza time=evening weather=clear
 
 @CAST actor=mira
 @CAST actor=old_chen
 
-@ENTER actor=mira at=(8, 6) facing=east
-@ENTER actor=old_chen at=(24, 6) facing=west
+@ENTER actor=mira at=(28, 22) facing=east
+@ENTER actor=old_chen at=(30, 22) facing=east
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
-「陈伯，我们去中间聊聊吧。」
+「陈伯，我们一起去那边坐坐吧。」
+@END
+
+@DIALOGUE speaker=old_chen auto=true auto_delay=2
+「好，慢慢走。」
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to_zone=plaza_center duration=4
-  @MOVE_TO actor=old_chen to_zone=plaza_center duration=4
+  @MOVE_TO actor=mira to=(34, 28) speed=1.2
+  @MOVE_TO actor=old_chen to=(36, 28) speed=1.2
 @END
 
-@FACE actor=mira facing=west
-@FACE actor=old_chen facing=east
+@FACE actor=mira facing=north
+@FACE actor=old_chen facing=north
 
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
-「好，年轻人，慢慢走。」
+「到了，这儿的晚风真舒服。」
 @END
 
-@NARRATION duration=3
-两个人在广场中央碰面，晚风轻轻吹过石板路。
+@NARRATION duration=2
+两个人在广场边并肩坐下，夜色渐渐柔和。
 
 @END_SCRIPT

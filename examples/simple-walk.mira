@@ -9,7 +9,7 @@ tags: [入门, 移动]
 cast: [mira]
 scenes: [plaza]
 acts: 1
-duration_estimate: 15
+duration_estimate: 30
 tone: 轻松
 author: example
 language: zh-CN
@@ -29,7 +29,7 @@ language: zh-CN
 「我要去广场中央看看。」
 @END
 
-@MOVE_TO actor=mira to_zone=plaza_center duration=3
+@MOVE_TO actor=mira to=(32, 24) speed=1.2
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「到了。」
