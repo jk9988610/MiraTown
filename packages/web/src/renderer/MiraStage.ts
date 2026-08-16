@@ -27,6 +27,9 @@ const ACTOR_HAIR: Record<string, number> = {
 
 const FEMALE_ACTORS = new Set(['mira', 'lily']);
 
+const SKIN = 0xffe0bd;
+const SKIN_SHADOW = 0xe8c9a8;
+
 interface ActorPose {
   cx: number;
   groundY: number;
