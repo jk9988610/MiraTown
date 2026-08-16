@@ -430,6 +430,24 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       });
       break;
     }
+    case 'GIVE': {
+      const actor = asString(params.actor) ?? asString(params.from);
+      if (!actor) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@GIVE 缺少 actor' });
+        break;
+      }
+      if (!ctx.presentActors.has(actor)) {
+        pushIssue(ctx, { code: 'E_ACTOR_NOT_PRESENT', line, message: `赠予者 ${actor} 未在场` });
+      }
+      const to = asString(params.to);
+      if (!to || !ctx.presentActors.has(to)) {
+        pushIssue(ctx, { code: 'E_ACTOR_NOT_PRESENT', line, message: `@GIVE 接收者 ${to ?? '?'} 未在场` });
+      }
+      if (!asString(params.id) && !asString(params.prop)) {
+        pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@GIVE 需要 id 或 prop' });
+      }
+      break;
+    }
     case 'SET_PROP': {
       const id = asString(params.id);
       if (!id) {

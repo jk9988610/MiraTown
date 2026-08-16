@@ -628,6 +628,34 @@ export class Runtime {
         this.log('prop_spawn', { id, attach }, node.line);
         break;
       }
+      case 'DESPAWN_PROP': {
+        const id = asString(node.params.id);
+        if (id) {
+          this.props.delete(id);
+          this.log('prop_despawn', { id }, node.line);
+        }
+        break;
+      }
+      case 'GIVE': {
+        const to = asString(node.params.to);
+        const from = asString(node.params.actor) ?? asString(node.params.from);
+        const propId = asString(node.params.id);
+        const propType = asString(node.params.prop);
+        let prop = propId ? this.props.get(propId) : undefined;
+        if (!prop && from) {
+          prop = [...this.props.values()].find(
+            (p) => p.attach === from && (!propType || p.prop === propType),
+          );
+        }
+        if (prop && to) {
+          prop.attach = to;
+          prop.offsetX = 0.22;
+          prop.offsetY = 0.08;
+          this.syncAttachedPropPosition(prop.id);
+          this.log('give', { id: prop.id, from, to }, node.line);
+        }
+        break;
+      }
       case 'SPAWN_WALKWAY': {
         const id = asString(node.params.id);
         const from = asVec2(node.params.from);

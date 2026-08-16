@@ -24,6 +24,11 @@ export function propFootY(sidewalkCenterY: number, width = SIDEWALK_WIDTH): numb
   return sidewalkTopY(sidewalkCenterY, width);
 }
 
+/** 店门/家门脚底：紧贴车道底缘（y 较小一侧，朝摄像机） */
+export function propLaneBottomY(sidewalkCenterY: number, width = SIDEWALK_WIDTH): number {
+  return sidewalkBottomY(sidewalkCenterY, width);
+}
+
 /** @deprecated 使用 propFootY */
 export const PLAZA_RAIN_WALK_CENTER_Y = 5.85;
 export const PLAZA_MAIN_WALK_CENTER_Y = 25.85;

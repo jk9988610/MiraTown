@@ -462,6 +462,45 @@ export class MiraStage {
           sortY: depthSortKey(footY, umbrellaBias),
           draw: (g) => this.drawUmbrella(g, prop, snapshot),
         });
+        continue;
+      }
+
+      if (prop.prop === 'scarf') {
+        const holder = prop.attach ? actorById.get(prop.attach) : undefined;
+        const footY = holder?.y ?? prop.y;
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(footY, 0.05),
+          draw: (g) => this.drawScarf(g, prop, snapshot),
+        });
+        continue;
+      }
+
+      if (prop.prop === 'supermarket') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(prop.y, -0.2),
+          draw: (g) => this.drawSupermarket(g, prop.x, prop.y),
+        });
+        continue;
+      }
+
+      if (prop.prop === 'shop_door') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(prop.y, -0.05),
+          draw: (g) => this.drawShopDoor(g, prop.x, prop.y, prop.state === 'open'),
+        });
+        continue;
+      }
+
+      if (prop.prop === 'home_door') {
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(prop.y, -0.05),
+          draw: (g) => this.drawHomeDoor(g, prop.x, prop.y, prop.state === 'open'),
+        });
+        continue;
       }
     }
 
@@ -500,6 +539,75 @@ export class MiraStage {
         this.depthGfx.delete(id);
       }
     }
+  }
+
+  private drawSupermarket(g: Graphics, x: number, y: number): void {
+    const size = this.propSize('supermarket');
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    g.roundRect(r.left, r.top, r.width, r.height, 4);
+    g.fill(0x4a5568);
+    g.roundRect(r.left + 6, r.top + 8, r.width - 12, r.height * 0.22, 3);
+    g.fill(0xffe9a8);
+    g.rect(r.left + 10, r.top + 14, r.width - 20, 10);
+    g.fill({ color: 0x2a3540, alpha: 0.85 });
+  }
+
+  private drawShopDoor(g: Graphics, x: number, y: number, open: boolean): void {
+    const size = this.propSize('shop_door');
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    if (open) {
+      g.rect(r.left, r.top + r.height * 0.15, r.width, r.height * 0.85);
+      g.fill({ color: 0xffd89a, alpha: 0.75 });
+      g.rect(r.left + 4, r.top + r.height * 0.2, r.width - 8, r.height * 0.75);
+      g.fill({ color: 0x1a2030, alpha: 0.35 });
+    } else {
+      g.roundRect(r.left, r.top, r.width, r.height, 2);
+      g.fill(0x5a4a3a);
+    }
+  }
+
+  private drawHomeDoor(g: Graphics, x: number, y: number, open: boolean): void {
+    const size = this.propSize('home_door');
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    if (open) {
+      g.rect(r.left - 8, r.top - 6, r.width + 16, r.height + 10);
+      g.fill({ color: 0xfff0b0, alpha: 0.45 });
+      g.roundRect(r.left, r.top, r.width, r.height, 2);
+      g.fill(0x6a5040);
+      g.rect(r.left + 6, r.top + 8, r.width - 12, r.height - 16);
+      g.fill({ color: 0xffe8a0, alpha: 0.85 });
+    } else {
+      g.roundRect(r.left, r.top, r.width, r.height, 2);
+      g.fill(0x5a4a3a);
+    }
+  }
+
+  private drawScarf(
+    g: Graphics,
+    prop: { x: number; y: number; attach?: string; offsetX?: number; offsetY?: number },
+    snapshot: RuntimeSnapshot,
+  ): void {
+    const holder = prop.attach
+      ? snapshot.actors.find((a) => a.id === prop.attach)
+      : undefined;
+    const holderSize = holder ? this.actorSize(holder.id) : { w: 0.8, h: 1.6 };
+    let cx: number;
+    let neckY: number;
+    if (holder) {
+      const pose = this.actorPose(holder, holderSize);
+      cx = pose.cx + (prop.offsetX ?? 0) * PX_PER_WU;
+      neckY = pose.chestY - PX_PER_WU * 0.15;
+    } else {
+      const base = footRect(this.mapH, prop.x, prop.y, 0.01, 0.01);
+      cx = base.centerX;
+      neckY = base.groundY - holderSize.h * PX_PER_WU * 0.55;
+    }
+    const w = this.propSize('scarf').w * PX_PER_WU;
+    g.moveTo(cx - w * 0.35, neckY);
+    g.bezierCurveTo(cx - w * 0.5, neckY + 18, cx - w * 0.2, neckY + 36, cx, neckY + 42);
+    g.bezierCurveTo(cx + w * 0.25, neckY + 30, cx + w * 0.4, neckY + 12, cx + w * 0.3, neckY);
+    g.fill(0xc94e6a);
+    g.stroke({ width: 2, color: 0xa83d58 });
   }
 
   private drawBench(g: Graphics, x: number, y: number): void {
