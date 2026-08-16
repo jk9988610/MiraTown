@@ -1,6 +1,6 @@
 import { getZoneCenter } from './catalog.js';
 import { SIDEWALK_WIDTH, UMBRELLA_SIDE_OFFSET } from './constants.js';
-import { resolveWalkwayTarget } from './walkway.js';
+import { resolveWalkwayTarget, walkwaysFullyCoincide } from './walkway.js';
 import { isBlock, isDirective } from './parser.js';
 import type {
   BlockNode,
@@ -387,6 +387,24 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       if (width <= 0) {
         pushIssue(ctx, { code: 'E_INVALID_PARAM', line, message: '@SPAWN_WALKWAY width 须为正数' });
         break;
+      }
+      for (const existing of ctx.spawnedWalkways.values()) {
+        const candidate: WalkwayDef = {
+          id,
+          scene: ctx.sceneId ?? '',
+          points: [from, to],
+          width,
+          visible_default: true,
+        };
+        if (walkwaysFullyCoincide(existing, candidate)) {
+          pushIssue(ctx, {
+            code: 'E_WALKWAY_COINCIDE',
+            line,
+            message: `人行道 ${id} 与 ${existing.id} 完全重合`,
+            suggestion: '允许部分重叠，但起止点与宽度不能完全相同',
+          });
+          break;
+        }
       }
       ctx.spawnedWalkways.set(id, {
         id,

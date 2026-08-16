@@ -10,7 +10,7 @@ export const DEPTH_BIAS = {
   umbrellaBack: -0.22,
 } as const;
 
-/** 脚底 Y 越小越靠前；升序绘制，返回值越大越靠前 */
-export function depthSortKey(footY: number, bias = 0): number {
-  return -footY + bias;
+/** 脚底 Y 越小越靠前；升序绘制，返回值越大越靠前。tieX 用于同 Y 时的稳定次序。 */
+export function depthSortKey(footY: number, bias = 0, tieX = 0): number {
+  return -footY + bias + tieX * 1e-4;
 }

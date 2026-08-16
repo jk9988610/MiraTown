@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { compileScript, lintScript, parseScript, Runtime } from './index.js';
 import type { WalkwayDef } from './types.js';
-import { interpolateWalkwayMove } from './walkway.js';
+import { interpolateWalkwayMove, walkwayMoveDistance } from './walkway.js';
 import { loadDefaultCatalog } from './catalog-node.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -285,12 +285,71 @@ duration_estimate: 30
     };
     const start = { x: 27, y: 6 };
     const target = { x: 21, y: 5.85 };
-    const mid = interpolateWalkwayMove(walkway.points, start, target, 0.5);
-    expect(mid.y).toBeGreaterThan(5.85);
-    expect(mid.y).toBeLessThan(6);
+    const total = walkwayMoveDistance(walkway.points, start, target);
+    expect(total).toBeGreaterThan(6);
     const atStart = interpolateWalkwayMove(walkway.points, start, target, 0);
     expect(atStart.x).toBeCloseTo(27, 2);
     expect(atStart.y).toBeCloseTo(6, 2);
+    const atEnd = interpolateWalkwayMove(walkway.points, start, target, 1);
+    expect(atEnd.x).toBeCloseTo(21, 2);
+    expect(atEnd.y).toBeCloseTo(5.85, 2);
+  });
+
+  it('moves at constant speed along route', () => {
+    const points = [
+      { x: 10, y: 5.85 },
+      { x: 28, y: 5.85 },
+    ];
+    const start = { x: 10, y: 5.85 };
+    const target = { x: 16, y: 5.85 };
+    const total = walkwayMoveDistance(points, start, target);
+    const samples = [0.25, 0.5, 0.75].map((p) => interpolateWalkwayMove(points, start, target, p));
+    for (let i = 0; i < samples.length; i++) {
+      const traveled = walkwayMoveDistance(points, start, samples[i]);
+      expect(traveled / total).toBeCloseTo([0.25, 0.5, 0.75][i], 2);
+    }
+  });
+
+  it('parallel duo moves keep individual durations', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira, old_chen]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2
+@ENTER actor=mira at=(10, 5.85)
+@ENTER actor=old_chen at=(27, 5.85)
+@PARALLEL
+  @MOVE_TO actor=mira to_path=plaza_rain_path x=20
+  @MOVE_TO actor=old_chen to_path=plaza_rain_path x=21
+@END
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    let chenDoneAt = 0;
+    let miraDoneAt = 0;
+    let miraWasWalking = false;
+    let chenWasWalking = false;
+    for (let i = 0; i < 600; i++) {
+      const snap = runtime.tick();
+      const mira = snap.actors.find((a) => a.id === 'mira');
+      const chen = snap.actors.find((a) => a.id === 'old_chen');
+      if (mira?.state === 'WALKING') miraWasWalking = true;
+      if (chen?.state === 'WALKING') chenWasWalking = true;
+      if (!miraDoneAt && miraWasWalking && mira?.state === 'IDLE') miraDoneAt = snap.T;
+      if (!chenDoneAt && chenWasWalking && chen?.state === 'IDLE') chenDoneAt = snap.T;
+      if (snap.completed) break;
+    }
+    expect(chenDoneAt).toBeGreaterThan(0);
+    expect(miraDoneAt).toBeGreaterThan(chenDoneAt);
   });
 });
 
@@ -338,6 +397,27 @@ duration_estimate: 30
     const ast = parseScript(source);
     const report = lintScript(ast, catalog);
     expect(report.warnings.some((e) => e.code === 'W_UMBRELLA_OFFSET')).toBe(true);
+  });
+
+  it('rejects fully coincident walkways', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@SPAWN_WALKWAY id=path_a from=(10, 5.85) to=(28, 5.85) width=1.2
+@SPAWN_WALKWAY id=path_b from=(10, 5.85) to=(28, 5.85) width=1.2
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const report = lintScript(ast, catalog);
+    expect(report.errors.some((e) => e.code === 'E_WALKWAY_COINCIDE')).toBe(true);
   });
 });
 

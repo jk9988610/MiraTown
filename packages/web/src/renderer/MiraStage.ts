@@ -473,7 +473,7 @@ export class MiraStage {
 
       items.push({
         id: `actor:${actor.id}`,
-        sortY: depthSortKey(actor.y, bias),
+        sortY: depthSortKey(actor.y, bias, actor.x),
         draw: (g) => this.drawActor(g, actor),
       });
     }
