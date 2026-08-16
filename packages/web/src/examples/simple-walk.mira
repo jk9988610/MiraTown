@@ -2,7 +2,7 @@
 title: 简单行走
 theme: 入门
 synopsis: |
-  米拉从广场一侧走到中央，演示最基础的移动与字幕。
+  米拉从广场一侧走到路灯下的长椅，演示移动与坐下。
 dsl_version: "1.0"
 catalog_version: "1.0.0"
 tags: [入门, 移动]
@@ -23,16 +23,18 @@ language: zh-CN
 
 @CAST actor=mira
 
-@SPAWN_PROP prop=lamp_post id=lamp_1 at=(10, 8) state=on
-@SPAWN_PROP prop=lamp_post id=lamp_2 at=(22, 14) state=on
+@SPAWN_PROP prop=lamp_post id=lamp_1 at=(30, 26) state=on
+@SPAWN_PROP prop=bench id=bench_1 at=(32, 26) state=empty
 
-@ENTER actor=mira at=(10, 8) facing=east
+@ENTER actor=mira at=(22, 24) facing=east
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
-「我要去广场中央看看。」
+「路灯下有条长椅，过去坐坐。」
 @END
 
-@MOVE_TO actor=mira to=(32, 24) speed=1.2
+@MOVE_TO actor=mira to=(31, 26) speed=1.2
+
+@SIT actor=mira bench=bench_1 seat=0
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「到了。」

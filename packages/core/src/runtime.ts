@@ -6,8 +6,6 @@ import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './
 const TICK = 1 / 60;
 /** 默认步行速度（wu/s），未指定 duration 时按路程自动计算 */
 const DEFAULT_WALK_SPEED = 1.2;
-/** 角色脚底中心最小间距（wu），仅防止完全重叠 */
-const MIN_ACTOR_SPACING = 0.28;
 
 interface ActorState {
   id: string;
@@ -125,7 +123,7 @@ export class Runtime {
     }
 
     this.updateAttachedProps();
-    this.separateOverlappingActors();
+    this.updateUmbrellaTowardPartner();
 
     this.updateFollowCamera(dt);
     this.clampCameraToMap();
@@ -413,9 +411,6 @@ export class Runtime {
         actor.y = target.y;
         actor.state = 'IDLE';
         if (actorId) this.activeMoveActors.delete(actorId);
-        if (this.activeMoveActors.size === 0) {
-          this.separateOverlappingActors();
-        }
         co.done = true;
       }
       return;
@@ -528,6 +523,36 @@ export class Runtime {
         if (actor) actor.facing = asString(node.params.facing) ?? actor.facing;
         break;
       }
+      case 'SIT': {
+        const actorId = asString(node.params.actor);
+        const actor = actorId ? this.actors.get(actorId) : undefined;
+        const benchId = asString(node.params.bench);
+        const seat = asNumber(node.params.seat, 0);
+        if (actor) {
+          if (benchId) {
+            const bench = this.props.get(benchId);
+            const benchDef = this.catalog.props.get('bench');
+            if (bench && benchDef) {
+              const seatOffset = seat === 1 ? benchDef.width * 0.22 : -benchDef.width * 0.22;
+              actor.x = bench.x + seatOffset;
+              actor.y = bench.y + 0.12;
+              bench.state = 'occupied';
+            }
+          }
+          actor.state = 'SITTING';
+          this.log('sit', { actor: actorId, bench: benchId, seat }, node.line);
+        }
+        break;
+      }
+      case 'STAND': {
+        const actorId = asString(node.params.actor);
+        const actor = actorId ? this.actors.get(actorId) : undefined;
+        if (actor) {
+          actor.state = 'IDLE';
+          this.log('stand', { actor: actorId }, node.line);
+        }
+        break;
+      }
       case 'EMOTE':
       case 'PLAY_ANIM':
         this.log(node.op.toLowerCase(), { ...node.params }, node.line);
@@ -566,9 +591,10 @@ export class Runtime {
       case 'MOVE_TO':
         return asNumber(node.params.duration, 3);
       case 'EMOTE':
-        return asNumber(node.params.duration, 1.5);
       case 'PLAY_ANIM':
-        return asNumber(node.params.duration, 1);
+      case 'SIT':
+      case 'STAND':
+        return asNumber(node.params.duration, node.op === 'SIT' || node.op === 'STAND' ? 0.4 : 1.5);
       case 'CAMERA':
       case 'PAN':
         return asNumber(node.params.duration, node.op === 'PAN' ? 2 : 0);
@@ -645,6 +671,21 @@ export class Runtime {
     return Math.max(1.5, dist / speed);
   }
 
+  /** 伞面自动偏向另一名在场角色，避免先错后对 */
+  private updateUmbrellaTowardPartner(): void {
+    for (const prop of this.props.values()) {
+      if (prop.prop !== 'umbrella' || !prop.attach) continue;
+      const holder = this.actors.get(prop.attach);
+      if (!holder) continue;
+      const partner = [...this.actors.values()].find((a) => a.id !== prop.attach);
+      if (!partner) continue;
+      const dx = partner.x - holder.x;
+      if (Math.abs(dx) < 0.15) continue;
+      const toward = Math.sign(dx) * Math.min(1.2, Math.abs(dx) / 2);
+      prop.offsetX = toward;
+    }
+  }
+
   private updateAttachedProps(): void {
     for (const prop of this.props.values()) {
       if (!prop.attach) continue;
@@ -652,33 +693,6 @@ export class Runtime {
       if (!holder) continue;
       prop.x = holder.x + prop.offsetX;
       prop.y = holder.y + prop.offsetY;
-    }
-  }
-
-  /** 防止多名角色堆叠在同一坐标 */
-  private separateOverlappingActors(): void {
-    const actors = [...this.actors.values()];
-    for (let i = 0; i < actors.length; i++) {
-      for (let j = i + 1; j < actors.length; j++) {
-        const a = actors[i];
-        const b = actors[j];
-        let dx = b.x - a.x;
-        let dy = b.y - a.y;
-        let dist = Math.hypot(dx, dy);
-        if (dist >= MIN_ACTOR_SPACING) continue;
-        if (dist < 0.001) {
-          dx = 1;
-          dy = 0;
-          dist = 1;
-        }
-        const push = (MIN_ACTOR_SPACING - dist) / 2;
-        const nx = dx / dist;
-        const ny = dy / dist;
-        a.x -= nx * push;
-        a.y -= ny * push;
-        b.x += nx * push;
-        b.y += ny * push;
-      }
     }
   }
 

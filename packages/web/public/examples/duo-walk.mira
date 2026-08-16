@@ -2,7 +2,7 @@
 title: 双人同行
 theme: 入门
 synopsis: |
-  米拉与陈伯并肩出发，平行走向广场另一侧，演示多人移动与防堆叠。
+  米拉与陈伯并肩走到路灯下的双人长椅并坐下。
 dsl_version: "1.0"
 catalog_version: "1.0.0"
 tags: [入门, 移动, 多人]
@@ -24,14 +24,14 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@SPAWN_PROP prop=lamp_post id=lamp_1 at=(28, 22) state=on
-@SPAWN_PROP prop=lamp_post id=lamp_2 at=(34, 28) state=on
+@SPAWN_PROP prop=lamp_post id=lamp_1 at=(32, 26) state=on
+@SPAWN_PROP prop=bench id=bench_1 at=(34, 26) state=empty
 
-@ENTER actor=mira at=(28, 22) facing=east
-@ENTER actor=old_chen at=(30, 22) facing=east
+@ENTER actor=mira at=(26, 24) facing=east
+@ENTER actor=old_chen at=(28, 24) facing=east
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
-「陈伯，我们一起去那边坐坐吧。」
+「陈伯，我们去路灯下坐坐吧。」
 @END
 
 @DIALOGUE speaker=old_chen auto=true auto_delay=2
@@ -39,9 +39,12 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(34, 28) speed=1.2
-  @MOVE_TO actor=old_chen to=(36, 28) speed=1.2
+  @MOVE_TO actor=mira to=(33, 26) speed=1.2
+  @MOVE_TO actor=old_chen to=(35, 26) speed=1.2
 @END
+
+@SIT actor=mira bench=bench_1 seat=0
+@SIT actor=old_chen bench=bench_1 seat=1
 
 @FACE actor=mira facing=north
 @FACE actor=old_chen facing=north
@@ -51,6 +54,6 @@ language: zh-CN
 @END
 
 @NARRATION duration=2
-两个人在广场边并肩坐下，夜色渐渐柔和。
+两个人在路灯下并肩坐下，夜色渐渐柔和。
 
 @END_SCRIPT
