@@ -51,18 +51,6 @@ function torsoWidths(baseW: number, female: boolean): TorsoWidths {
     : { chest: baseW * 1.06, waist: baseW * 0.96, hip: baseW * 1.2 };
 }
 
-function fillHairArc(
-  g: Graphics,
-  cx: number,
-  cy: number,
-  r: number,
-  start: number,
-  end: number,
-  color: number,
-): void {
-  g.arc(cx, cy, r, start, end).fill(color);
-}
-
 function drawFrontTorso(
   g: Graphics,
   cx: number,
@@ -77,15 +65,37 @@ function drawFrontTorso(
   const yHip = top + height * 0.78;
   const yBot = top + height;
 
-  g.moveTo(cx - widths.chest * 0.82, yChest);
-  g.bezierCurveTo(cx - widths.chest, yTop, cx - widths.chest * 0.35, yTop, cx, yTop);
-  g.bezierCurveTo(cx + widths.chest * 0.35, yTop, cx + widths.chest, yTop, cx + widths.chest * 0.82, yChest);
-  g.bezierCurveTo(cx + widths.chest, yChest + height * 0.1, cx + widths.waist * 0.95, yWaist, cx + widths.hip, yHip);
-  g.quadraticCurveTo(cx + widths.hip * 0.98, yBot, cx, yBot);
-  g.quadraticCurveTo(cx - widths.hip * 0.98, yBot, cx - widths.hip, yHip);
-  g.bezierCurveTo(cx - widths.waist * 0.95, yWaist, cx - widths.chest, yChest + height * 0.1, cx - widths.chest * 0.82, yChest);
-  g.closePath();
-  g.fill(color);
+  const pts = [
+    cx - widths.chest * 0.82,
+    yChest,
+    cx - widths.chest,
+    yTop,
+    cx,
+    yTop,
+    cx + widths.chest,
+    yTop,
+    cx + widths.chest * 0.82,
+    yChest,
+    cx + widths.chest,
+    yChest + height * 0.1,
+    cx + widths.waist * 0.95,
+    yWaist,
+    cx + widths.hip,
+    yHip,
+    cx + widths.hip * 0.98,
+    yBot,
+    cx,
+    yBot,
+    cx - widths.hip * 0.98,
+    yBot,
+    cx - widths.hip,
+    yHip,
+    cx - widths.waist * 0.95,
+    yWaist,
+    cx - widths.chest,
+    yChest + height * 0.1,
+  ];
+  g.poly(pts).fill(color);
 }
 
 function drawBackTorso(
@@ -102,15 +112,37 @@ function drawBackTorso(
   const yHip = top + height * 0.78;
   const yBot = top + height;
 
-  g.moveTo(cx - widths.chest * 0.78, yChest);
-  g.bezierCurveTo(cx - widths.chest * 0.95, yTop, cx - widths.chest * 0.3, yTop, cx, yTop);
-  g.bezierCurveTo(cx + widths.chest * 0.3, yTop, cx + widths.chest * 0.95, yTop, cx + widths.chest * 0.78, yChest);
-  g.bezierCurveTo(cx + widths.chest * 0.92, yChest + height * 0.12, cx + widths.waist * 1.04, yWaist, cx + widths.hip * 0.98, yHip);
-  g.quadraticCurveTo(cx + widths.hip * 0.92, yBot, cx, yBot);
-  g.quadraticCurveTo(cx - widths.hip * 0.92, yBot, cx - widths.hip * 0.98, yHip);
-  g.bezierCurveTo(cx - widths.waist * 1.04, yWaist, cx - widths.chest * 0.92, yChest + height * 0.12, cx - widths.chest * 0.78, yChest);
-  g.closePath();
-  g.fill(color);
+  const pts = [
+    cx - widths.chest * 0.78,
+    yChest,
+    cx - widths.chest * 0.95,
+    yTop,
+    cx,
+    yTop,
+    cx + widths.chest * 0.95,
+    yTop,
+    cx + widths.chest * 0.78,
+    yChest,
+    cx + widths.chest * 0.92,
+    yChest + height * 0.12,
+    cx + widths.waist * 1.04,
+    yWaist,
+    cx + widths.hip * 0.98,
+    yHip,
+    cx + widths.hip * 0.92,
+    yBot,
+    cx,
+    yBot,
+    cx - widths.hip * 0.92,
+    yBot,
+    cx - widths.hip * 0.98,
+    yHip,
+    cx - widths.waist * 1.04,
+    yWaist,
+    cx - widths.chest * 0.92,
+    yChest + height * 0.12,
+  ];
+  g.poly(pts).fill(color);
 }
 
 interface ActorPose {
@@ -450,10 +482,11 @@ export class MiraStage {
     size: { w: number; h: number },
   ): ActorPose {
     const sitting = actor.state === 'SITTING';
-    const heightWu = sitting ? size.h * 0.62 : size.h;
+    const heightWu = sitting ? size.h * 0.72 : size.h;
     const r = footRect(this.mapH, actor.x, actor.y, size.w, heightWu);
-    const bodyBottom = sitting ? r.groundY - PX_PER_WU * 0.26 : r.groundY - PX_PER_WU * 0.06;
-    const bodyH = r.height * (sitting ? 0.46 : 0.5);
+    const standH = size.h * PX_PER_WU;
+    const bodyBottom = sitting ? r.groundY + PX_PER_WU * 0.14 : r.groundY - PX_PER_WU * 0.06;
+    const bodyH = sitting ? standH * 0.52 : r.height * 0.5;
     const bodyTop = bodyBottom - bodyH;
     const headR = r.width * 0.28;
     const headCy = bodyTop - headR * 0.82;
@@ -572,7 +605,7 @@ export class MiraStage {
 
     if (facing === VIEW_FRONT) {
       g.circle(cx, headCy, hr).fill(SKIN);
-      fillHairArc(g, cx, headCy - hr * 0.12, hr * 1.02, Math.PI, 0, hairColor);
+      g.ellipse(cx, headCy - hr * 0.12, hr * 1.02, hr * 0.55).fill(hairColor);
       g.ellipse(cx - hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4).fill(hairColor);
       g.ellipse(cx + hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4).fill(hairColor);
       g.circle(cx - hr * 0.28, headCy + hr * 0.1, hr * 0.1).fill(0x2a2520);
