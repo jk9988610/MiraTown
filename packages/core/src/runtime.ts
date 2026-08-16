@@ -1,3 +1,4 @@
+import { clampCamera } from './camera.js';
 import { getZoneCenter } from './catalog.js';
 import type { Catalog } from './types.js';
 import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './types.js';
@@ -26,6 +27,8 @@ interface CameraState {
   zoom: number;
   mode: string;
   target?: string;
+  offsetX: number;
+  offsetY: number;
 }
 
 interface ActiveCoroutine {
@@ -61,7 +64,7 @@ export class Runtime {
   private sceneId: string | null = null;
   private actors = new Map<string, ActorState>();
   private props = new Map<string, PropState>();
-  private camera: CameraState = { x: 16, y: 12, zoom: 1, mode: 'fixed' };
+  private camera: CameraState = { x: 32, y: 24, zoom: 1, mode: 'fixed', offsetX: 0, offsetY: 0 };
   private queue: ActiveCoroutine[] = [];
   private events: RuntimeEvent[] = [];
   private completed = false;
@@ -87,7 +90,7 @@ export class Runtime {
     this.sceneId = null;
     this.actors.clear();
     this.props.clear();
-    this.camera = { x: 16, y: 12, zoom: 1, mode: 'fixed' };
+    this.camera = { x: 32, y: 24, zoom: 1, mode: 'fixed', offsetX: 0, offsetY: 0 };
     this.queue = [];
     this.events = [];
     this.completed = false;
@@ -109,6 +112,9 @@ export class Runtime {
       this.stepCoroutine(co, dt);
       if (!co.done) this.queue.push(co);
     }
+
+    this.updateFollowCamera(dt);
+    this.clampCameraToMap();
 
     if (this.queue.length === 0 && !this.completed) {
       this.completed = true;
@@ -134,6 +140,7 @@ export class Runtime {
   }
 
   private snapshot(): RuntimeSnapshot {
+    const scene = this.sceneId ? this.catalog.scenes.get(this.sceneId) : null;
     return {
       T: this.T,
       t: this.t,
@@ -141,6 +148,7 @@ export class Runtime {
       actors: [...this.actors.values()],
       props: [...this.props.values()],
       camera: { ...this.camera },
+      mapSize: scene ? { w: scene.width, h: scene.height } : null,
       dialogue: this.dialogue,
       narration: this.narration,
       completed: this.completed,
@@ -292,6 +300,33 @@ export class Runtime {
       return;
     }
 
+    if (node.op === 'PAN' || (node.op === 'CAMERA' && asNumber(node.params.duration, 0) > 0)) {
+      const duration = co.duration || asNumber(node.params.duration, 2);
+      if (!co.meta?.camStart) {
+        const end =
+          node.op === 'PAN'
+            ? this.resolvePanTarget(node.params)
+            : this.resolveCameraTarget(node.params);
+        co.meta = {
+          camStart: { x: this.camera.x, y: this.camera.y },
+          camEnd: end,
+        };
+        co.duration = duration;
+      }
+      const end = co.meta.camEnd as Vec2 | null;
+      if (!end) {
+        co.done = true;
+        return;
+      }
+      const start = co.meta.camStart as Vec2;
+      const progress = Math.min(1, co.elapsed / duration);
+      this.camera.x = start.x + (end.x - start.x) * progress;
+      this.camera.y = start.y + (end.y - start.y) * progress;
+      this.camera.mode = node.op === 'PAN' ? 'pan' : this.camera.mode;
+      if (progress >= 1) co.done = true;
+      return;
+    }
+
     if (node.op === 'MOVE_TO') {
       const actorId = asString(node.params.actor);
       const actor = actorId ? this.actors.get(actorId) : undefined;
@@ -326,6 +361,11 @@ export class Runtime {
       case 'SCENE': {
         this.sceneId = asString(node.params.id) ?? null;
         this.t = 0;
+        const scene = this.sceneId ? this.catalog.scenes.get(this.sceneId) : null;
+        if (scene) {
+          this.camera.x = scene.width / 2;
+          this.camera.y = scene.height / 2;
+        }
         this.log('scene_change', { scene: this.sceneId }, node.line);
         break;
       }
@@ -383,16 +423,16 @@ export class Runtime {
         if (preset) {
           this.camera.zoom = preset.zoom;
           this.camera.mode = preset.mode;
+          this.camera.offsetX = preset.offset.x;
+          this.camera.offsetY = preset.offset.y;
           const target = asString(node.params.target);
-          if (target) {
-            this.camera.target = target;
-            const actor = this.actors.get(target);
-            if (actor) {
-              this.camera.x = actor.x + preset.offset.x;
-              this.camera.y = actor.y + preset.offset.y;
-            }
+          const targetZone = asString(node.params.target_zone);
+          if (target) this.camera.target = target;
+          const duration = asNumber(node.params.duration, 0);
+          if (duration === 0) {
+            this.applyCameraTarget(target, targetZone);
           }
-          this.log('camera_change', { preset: presetId, target }, node.line);
+          this.log('camera_change', { preset: presetId, target, targetZone }, node.line);
         }
         break;
       }
@@ -443,7 +483,7 @@ export class Runtime {
         return asNumber(node.params.duration, 1);
       case 'CAMERA':
       case 'PAN':
-        return asNumber(node.params.duration, 0);
+        return asNumber(node.params.duration, node.op === 'PAN' ? 2 : 0);
       case 'SCENE':
         return 0.1;
       case 'NARRATION':
@@ -470,6 +510,60 @@ export class Runtime {
       if (actor) return { x: actor.x + offset.x, y: actor.y + offset.y };
     }
     return null;
+  }
+
+  private resolvePanTarget(params: Record<string, ParamValue>): Vec2 | null {
+    const to = asVec2(params.to);
+    if (to) return to;
+    const target = asString(params.target);
+    if (target) {
+      const actor = this.actors.get(target);
+      if (actor) return { x: actor.x + this.camera.offsetX, y: actor.y + this.camera.offsetY };
+    }
+    return null;
+  }
+
+  private resolveCameraTarget(params: Record<string, ParamValue>): Vec2 | null {
+    const target = asString(params.target);
+    const targetZone = asString(params.target_zone);
+    if (target) {
+      const actor = this.actors.get(target);
+      if (actor) return { x: actor.x + this.camera.offsetX, y: actor.y + this.camera.offsetY };
+    }
+    if (targetZone) {
+      const zone = this.catalog.zones.get(targetZone);
+      if (zone) return getZoneCenter(zone);
+    }
+    return null;
+  }
+
+  private applyCameraTarget(target?: string, targetZone?: string): void {
+    const pos = this.resolveCameraTarget({
+      ...(target ? { target } : {}),
+      ...(targetZone ? { target_zone: targetZone } : {}),
+    });
+    if (pos) {
+      this.camera.x = pos.x;
+      this.camera.y = pos.y;
+    }
+  }
+
+  private updateFollowCamera(dt: number): void {
+    if (this.camera.mode !== 'follow' || !this.camera.target) return;
+    const actor = this.actors.get(this.camera.target);
+    if (!actor) return;
+    const k = 1 - Math.exp(-5 * dt);
+    const tx = actor.x + this.camera.offsetX;
+    const ty = actor.y + this.camera.offsetY;
+    this.camera.x += (tx - this.camera.x) * k;
+    this.camera.y += (ty - this.camera.y) * k;
+  }
+
+  private clampCameraToMap(): void {
+    if (!this.sceneId) return;
+    const scene = this.catalog.scenes.get(this.sceneId);
+    if (!scene) return;
+    clampCamera(this.camera, scene.width, scene.height);
   }
 }
 

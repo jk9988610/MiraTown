@@ -11,6 +11,7 @@ export * from './parser.js';
 export * from './linter.js';
 export * from './compiler.js';
 export * from './runtime.js';
+export * from './camera.js';
 
 export function processScript(source: string) {
   const catalog = loadEmbeddedCatalog();

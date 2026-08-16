@@ -73,8 +73,8 @@ props:
     tags: [家具]
   - id: umbrella
     display_name: 雨伞
-    width: 0.6
-    height: 1.2
+    width: 2.0
+    height: 1.8
     anchor: foot
     placeable: true
     states: [closed, open]
@@ -91,8 +91,8 @@ props:
 scenes:
   - id: plaza
     display_name: 中心广场
-    width: 32
-    height: 24
+    width: 64
+    height: 48
     default_camera: cam_wide
     env:
       time: [day, evening, night]
@@ -130,10 +130,10 @@ camera_presets:
 zones:
   - id: plaza_center
     scene: plaza
-    rect: { x: 10, y: 8, w: 12, h: 8 }
+    rect: { x: 26, y: 20, w: 12, h: 8 }
   - id: plaza_bench
     scene: plaza
-    rect: { x: 4, y: 3, w: 3, h: 2 }
+    rect: { x: 8, y: 6, w: 3, h: 2 }
 `;
 
 export function loadEmbeddedCatalog(): Catalog {
