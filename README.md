@@ -16,11 +16,18 @@ AI 导演驱动的网页演绎游戏：严格数学空间 + DSL 剧本 + 程序�
 
 [catalog/entities.yaml](catalog/entities.yaml)
 
+## 开发
+
+```bash
+npm install
+npm run dev          # 启动 Web（S0 无 AI 播放界面）
+npm test -w @miratown/core
+```
+
 ## 状态
 
-**设计规范 0.1.1** — Gate 0–3 已闭合，下一步：**S0 无 AI 播放 → S1 Parser/Linter**
-
-新对话请先读 [docs/DISCUSSION.md](docs/DISCUSSION.md)。
+**S0 + S1 已实现**：Parser、Linter、Headless Runtime、Web 校验/播放界面。  
+下一步：S3 PixiJS 渲染。
 
 ## 三条铁律
 

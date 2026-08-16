@@ -97,6 +97,7 @@ Linter 校验：
 @SPAWN_PROP prop=umbrella id=umbrella_1 at=(20, 6) state=closed
 
 @ENTER actor=mira at=(8, 5) facing=east
+@ENTER actor=old_chen at=(20, 6) facing=west
 @CAMERA preset=cam_wide
 @CUT preset=cam_follow target=mira
 

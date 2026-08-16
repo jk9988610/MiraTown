@@ -1,0 +1,13 @@
+{
+  "name": "miratown",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @miratown/core && npm run build -w @miratown/web",
+    "dev": "npm run dev -w @miratown/web",
+    "test": "npm run test -w @miratown/core",
+    "lint:example": "npm run lint:example -w @miratown/core"
+  }
+}
