@@ -5,7 +5,7 @@ import type { IRNode, ParamValue, RuntimeEvent, RuntimeSnapshot, Vec2 } from './
 
 const TICK = 1 / 60;
 /** 默认步行速度（wu/s），未指定 duration 时按路程自动计算 */
-const DEFAULT_WALK_SPEED = 1.2;
+const DEFAULT_WALK_SPEED = 2.0;
 
 interface ActorState {
   id: string;

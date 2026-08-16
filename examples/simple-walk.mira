@@ -32,7 +32,7 @@ language: zh-CN
 「路灯下有条长椅，过去坐坐。」
 @END
 
-@MOVE_TO actor=mira to=(31, 26) speed=1.2
+@MOVE_TO actor=mira to=(31, 26)
 
 @SIT actor=mira bench=bench_1 seat=0
 

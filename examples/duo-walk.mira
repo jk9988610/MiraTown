@@ -39,8 +39,8 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(33, 26) speed=1.2
-  @MOVE_TO actor=old_chen to=(35, 26) speed=1.2
+  @MOVE_TO actor=mira to=(33, 26)
+  @MOVE_TO actor=old_chen to=(35, 26)
 @END
 
 @SIT actor=mira bench=bench_1 seat=0

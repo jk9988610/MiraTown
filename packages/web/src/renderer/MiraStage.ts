@@ -47,7 +47,7 @@ interface TorsoWidths {
 
 function torsoWidths(baseW: number, female: boolean): TorsoWidths {
   return female
-    ? { chest: baseW * 1.16, waist: baseW * 0.44, hip: baseW * 1.32 }
+    ? { chest: baseW * 1.16, waist: baseW * 1.06, hip: baseW * 1.32 }
     : { chest: baseW * 1.06, waist: baseW * 0.96, hip: baseW * 1.2 };
 }
 

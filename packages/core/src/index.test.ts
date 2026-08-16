@@ -100,7 +100,7 @@ duration_estimate: 30
 @BEGIN
 @SCENE id=plaza
 @ENTER actor=mira at=(10, 8)
-@MOVE_TO actor=mira to=(16, 8) speed=1.2
+@MOVE_TO actor=mira to=(16, 8)
 @END_SCRIPT`;
     const ast = parseScript(source);
     const runtime = new Runtime(catalog);
@@ -112,8 +112,8 @@ duration_estimate: 30
       if (snap.completed) break;
     }
     const walkTime = events.length / 60;
-    expect(walkTime).toBeGreaterThan(4);
-    expect(walkTime).toBeLessThan(7);
+    expect(walkTime).toBeGreaterThan(2);
+    expect(walkTime).toBeLessThan(4.5);
   });
 
   it('attaches prop to actor and follows movement', () => {
@@ -131,7 +131,7 @@ duration_estimate: 30
 @SCENE id=plaza
 @ENTER actor=old_chen at=(10, 5)
 @SPAWN_PROP prop=umbrella id=u1 attach=old_chen offset=(0.4, 0) state=open
-@MOVE_TO actor=old_chen to=(16, 5) speed=1.2
+@MOVE_TO actor=old_chen to=(16, 5)
 @END_SCRIPT`;
     const ast = parseScript(source);
     const runtime = new Runtime(catalog);
