@@ -44,8 +44,8 @@ interface TorsoWidths {
 
 function torsoWidths(baseW: number, female: boolean): TorsoWidths {
   return female
-    ? { chest: baseW * 1.06, waist: baseW * 0.56, hip: baseW * 1.02 }
-    : { chest: baseW * 0.94, waist: baseW * 0.88, hip: baseW * 0.92 };
+    ? { chest: baseW * 1.16, waist: baseW * 0.44, hip: baseW * 1.32 }
+    : { chest: baseW * 1.06, waist: baseW * 0.96, hip: baseW * 1.2 };
 }
 
 function drawFrontTorso(
@@ -65,10 +65,10 @@ function drawFrontTorso(
   g.moveTo(cx - widths.chest * 0.82, yChest);
   g.bezierCurveTo(cx - widths.chest, yTop, cx - widths.chest * 0.35, yTop, cx, yTop);
   g.bezierCurveTo(cx + widths.chest * 0.35, yTop, cx + widths.chest, yTop, cx + widths.chest * 0.82, yChest);
-  g.bezierCurveTo(cx + widths.chest, yChest + height * 0.08, cx + widths.waist, yWaist, cx + widths.hip, yHip);
-  g.quadraticCurveTo(cx + widths.hip * 0.85, yBot, cx, yBot);
-  g.quadraticCurveTo(cx - widths.hip * 0.85, yBot, cx - widths.hip, yHip);
-  g.bezierCurveTo(cx - widths.waist, yWaist, cx - widths.chest, yChest + height * 0.08, cx - widths.chest * 0.82, yChest);
+  g.bezierCurveTo(cx + widths.chest, yChest + height * 0.1, cx + widths.waist * 0.95, yWaist, cx + widths.hip, yHip);
+  g.quadraticCurveTo(cx + widths.hip * 0.98, yBot, cx, yBot);
+  g.quadraticCurveTo(cx - widths.hip * 0.98, yBot, cx - widths.hip, yHip);
+  g.bezierCurveTo(cx - widths.waist * 0.95, yWaist, cx - widths.chest, yChest + height * 0.1, cx - widths.chest * 0.82, yChest);
   g.closePath();
   g.fill(color);
 }
@@ -90,10 +90,10 @@ function drawBackTorso(
   g.moveTo(cx - widths.chest * 0.78, yChest);
   g.bezierCurveTo(cx - widths.chest * 0.95, yTop, cx - widths.chest * 0.3, yTop, cx, yTop);
   g.bezierCurveTo(cx + widths.chest * 0.3, yTop, cx + widths.chest * 0.95, yTop, cx + widths.chest * 0.78, yChest);
-  g.bezierCurveTo(cx + widths.chest * 0.92, yChest + height * 0.1, cx + widths.waist * 1.02, yWaist, cx + widths.hip * 0.96, yHip);
-  g.quadraticCurveTo(cx + widths.hip * 0.8, yBot, cx, yBot);
-  g.quadraticCurveTo(cx - widths.hip * 0.8, yBot, cx - widths.hip * 0.96, yHip);
-  g.bezierCurveTo(cx - widths.waist * 1.02, yWaist, cx - widths.chest * 0.92, yChest + height * 0.1, cx - widths.chest * 0.78, yChest);
+  g.bezierCurveTo(cx + widths.chest * 0.92, yChest + height * 0.12, cx + widths.waist * 1.04, yWaist, cx + widths.hip * 0.98, yHip);
+  g.quadraticCurveTo(cx + widths.hip * 0.92, yBot, cx, yBot);
+  g.quadraticCurveTo(cx - widths.hip * 0.92, yBot, cx - widths.hip * 0.98, yHip);
+  g.bezierCurveTo(cx - widths.waist * 1.04, yWaist, cx - widths.chest * 0.92, yChest + height * 0.12, cx - widths.chest * 0.78, yChest);
   g.closePath();
   g.fill(color);
 }
@@ -384,9 +384,12 @@ export class MiraStage {
         if (holder && lamps.length > 0 && this.nearestLampDist(holder.x, holder.y, lamps) < LAMP_NEAR_WU) {
           holderBias += 0.1;
         }
+        const holderFacing = holder ? normalizeFacing(holder.facing) : VIEW_FRONT;
+        const umbrellaBias =
+          holderFacing === VIEW_BACK ? holderBias - 0.22 : holderBias + 0.18;
         items.push({
           id: `prop:${prop.id}`,
-          sortY: depthSortKey(footY, holderBias + 0.18),
+          sortY: depthSortKey(footY, umbrellaBias),
           draw: (g) => this.drawUmbrella(g, prop, snapshot),
         });
       }
@@ -626,7 +629,7 @@ export class MiraStage {
   ): void {
     const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
     const sitting = actor.state === 'SITTING';
-    const facing = normalizeFacing(actor.facing);
+    const facing = sitting ? VIEW_FRONT : normalizeFacing(actor.facing);
     const pose = this.actorPose(actor, size);
     const bodyColor = ACTOR_COLORS[actor.id] ?? 0xffffff;
     const hairColor = ACTOR_HAIR[actor.id] ?? 0x3a3a3a;
