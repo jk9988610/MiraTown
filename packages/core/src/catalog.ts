@@ -164,6 +164,20 @@ walkways:
       - { x: 37, y: 25.85 }
     width: 1.2
     visible_default: true
+  - id: plaza_rain_north_left
+    scene: plaza
+    points:
+      - { x: 19.5, y: 5.85 }
+      - { x: 19.5, y: 10 }
+    width: 1.2
+    visible_default: true
+  - id: plaza_rain_north_right
+    scene: plaza
+    points:
+      - { x: 20.5, y: 5.85 }
+      - { x: 20.5, y: 10 }
+    width: 1.2
+    visible_default: true
 `;
 
 export function loadEmbeddedCatalog(): Catalog {

@@ -240,4 +240,55 @@ duration_estimate: 30
     const path = snapshot.walkways.find((w) => w.id === 'plaza_rain_path');
     expect(path?.visible).toBe(false);
   });
+
+  it('moves actor along vertical walkway', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(19.5, 5.85)
+@MOVE_TO actor=mira to_path=plaza_rain_north_left y=10
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const mira = snapshot.actors.find((a) => a.id === 'mira');
+    expect(mira?.x).toBeCloseTo(19.5, 1);
+    expect(mira?.y).toBeCloseTo(10, 1);
+  });
+});
+
+describe('linter prop offset', () => {
+  const catalog = loadDefaultCatalog();
+
+  it('errors when SET_PROP changes attach prop offset', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [old_chen]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=old_chen at=(10, 5)
+@SPAWN_PROP prop=umbrella id=u1 attach=old_chen offset=(0.4, 0) state=open
+@SET_PROP id=u1 offset=(-0.4, 0)
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const report = lintScript(ast, catalog);
+    expect(report.errors.some((e) => e.code === 'E_SET_PROP_OFFSET_ATTACHED')).toBe(true);
+  });
 });

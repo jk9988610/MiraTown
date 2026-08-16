@@ -336,7 +336,14 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
         });
       }
       const offset = asVec2(params.offset);
-      if (offset && spawned && !spawned.attach) {
+      if (offset && spawned?.attach) {
+        pushIssue(ctx, {
+          code: 'E_SET_PROP_OFFSET_ATTACHED',
+          line,
+          message: `@SET_PROP 禁止修改 attach 道具 ${id} 的 offset（应在 @SPAWN_PROP 时固定）`,
+          suggestion: '仅允许修改 state，例如 state=open',
+        });
+      } else if (offset && spawned && !spawned.attach) {
         pushIssue(ctx, {
           code: 'W_SET_PROP_OFFSET_NO_ATTACH',
           level: 'warning',

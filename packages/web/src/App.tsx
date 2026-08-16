@@ -33,6 +33,7 @@ export function App() {
   const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [exampleId, setExampleId] = useState<ExampleId>('simple');
+  const [showWalkways, setShowWalkways] = useState(true);
   const runtimeRef = useRef<Runtime | null>(null);
   const rafRef = useRef<number>(0);
 
@@ -143,8 +144,18 @@ export function App() {
       </header>
 
       <section className="player-section">
-        <h2>演绎舞台</h2>
-        <StageView snapshot={snapshot} catalog={catalog} />
+        <div className="section-head">
+          <h2>演绎舞台</h2>
+          <label className="walkway-toggle">
+            <input
+              type="checkbox"
+              checked={showWalkways}
+              onChange={(e) => setShowWalkways(e.target.checked)}
+            />
+            显示人行道
+          </label>
+        </div>
+        <StageView snapshot={snapshot} catalog={catalog} showWalkways={showWalkways} />
       </section>
 
       <div className="grid">

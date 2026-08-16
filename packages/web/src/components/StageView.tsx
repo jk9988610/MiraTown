@@ -5,9 +5,10 @@ import { MiraStage } from '../renderer/MiraStage';
 interface StageViewProps {
   snapshot: RuntimeSnapshot | null;
   catalog?: Catalog;
+  showWalkways?: boolean;
 }
 
-export function StageView({ snapshot, catalog }: StageViewProps) {
+export function StageView({ snapshot, catalog, showWalkways = true }: StageViewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<MiraStage | null>(null);
@@ -29,7 +30,7 @@ export function StageView({ snapshot, catalog }: StageViewProps) {
       if (!alive || stageRef.current !== stage) return;
       setStageReady(true);
       const pending = snapshotRef.current;
-      if (pending) stage.update(pending);
+      if (pending) stage.update(pending, { showWalkways });
     });
 
     return () => {
@@ -38,12 +39,12 @@ export function StageView({ snapshot, catalog }: StageViewProps) {
       stage.destroy();
       if (stageRef.current === stage) stageRef.current = null;
     };
-  }, []);
+  }, [catalog]);
 
   useEffect(() => {
     if (!snapshot || !stageReady || !stageRef.current) return;
-    stageRef.current.update(snapshot);
-  }, [snapshot, stageReady]);
+    stageRef.current.update(snapshot, { showWalkways });
+  }, [snapshot, stageReady, showWalkways]);
 
   return (
     <div className="stage-wrap">

@@ -71,8 +71,8 @@ language: zh-CN
 @FACE actor=old_chen facing=north
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(19.5, 10)
-  @MOVE_TO actor=old_chen to=(20.5, 10)
+  @MOVE_TO actor=mira to_path=plaza_rain_north_left y=10
+  @MOVE_TO actor=old_chen to_path=plaza_rain_north_right y=10
 @END
 
 @NARRATION duration=2.5
