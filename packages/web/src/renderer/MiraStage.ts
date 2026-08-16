@@ -9,6 +9,7 @@ const SIZES = {
   lily: { w: 0.7, h: 1.5 },
   bench: { w: 2.0, h: 1.0 },
   umbrella: { w: 4.5, h: 2.5 },
+  lamp_post: { w: 0.4, h: 3.5 },
   letter: { w: 0.2, h: 0.15 },
 } as const;
 
@@ -131,13 +132,7 @@ export class MiraStage {
     }
     this.groundLayer.addChild(g);
 
-    const plaza = new Graphics();
-    const cx = this.mapW / 2;
-    const cy = this.mapH / 2;
-    const center = footRect(this.mapH, cx, cy, 0.1, 0.1);
-    plaza.circle(center.centerX, center.groundY - 40, Math.min(this.mapW, this.mapH) * PX_PER_WU * 0.35);
-    plaza.fill({ color: 0x3a5a4a, alpha: 0.35 });
-    this.groundLayer.addChild(plaza);
+    // 广场地面微纹理（不再用无来源的居中光斑）
   }
 
   private drawActors(snapshot: RuntimeSnapshot): void {
@@ -185,6 +180,24 @@ export class MiraStage {
       if (prop.prop === 'bench') {
         g.roundRect(r.left, r.top, r.width, r.height, 4);
         g.fill(0x8b5a2b);
+      } else if (prop.prop === 'lamp_post') {
+        const lit = prop.state === 'on';
+        if (lit) {
+          const glowR = PX_PER_WU * 3.2;
+          g.circle(r.centerX, r.groundY, glowR);
+          g.fill({ color: 0xffd27f, alpha: 0.14 });
+          g.circle(r.centerX, r.groundY, glowR * 0.55);
+          g.fill({ color: 0xffe8a8, alpha: 0.1 });
+        }
+        g.rect(r.centerX - 3, r.groundY - r.height, 6, r.height);
+        g.fill(0x3a4555);
+        const headY = r.groundY - r.height + 8;
+        g.roundRect(r.centerX - 10, headY - 6, 20, 12, 3);
+        g.fill(lit ? 0xffe9b0 : 0x556677);
+        if (lit) {
+          g.circle(r.centerX, headY, 14);
+          g.fill({ color: 0xfff2c8, alpha: 0.55 });
+        }
       } else if (prop.prop === 'umbrella') {
         const poleTop = r.groundY - r.height * 0.88;
         g.moveTo(r.centerX, r.groundY);

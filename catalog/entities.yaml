@@ -44,6 +44,15 @@ props:
     states: [closed, open]
     tags: [手持]
 
+  - id: lamp_post
+    display_name: 路灯
+    width: 0.4
+    height: 3.5
+    anchor: foot
+    placeable: true
+    states: [on, off]
+    tags: [家具, 照明]
+
   - id: letter
     display_name: 信
     width: 0.2
