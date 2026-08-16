@@ -72,6 +72,7 @@ export class Runtime {
   private dialogue?: { speaker: string; line: string };
   private narration?: string;
   private ir: IRNode | null = null;
+  private activeMoveActors = new Set<string>();
 
   constructor(
     private readonly catalog: Catalog,
@@ -97,6 +98,7 @@ export class Runtime {
     this.error = undefined;
     this.dialogue = undefined;
     this.narration = undefined;
+    this.activeMoveActors.clear();
   }
 
   tick(dt = TICK): RuntimeSnapshot {
@@ -339,6 +341,10 @@ export class Runtime {
         co.done = true;
         return;
       }
+      if (actorId && !co.meta?.moveRegistered) {
+        this.activeMoveActors.add(actorId);
+        co.meta = { ...co.meta, moveRegistered: true };
+      }
       const duration = co.duration || 1;
       const progress = Math.min(1, co.elapsed / duration);
       const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
@@ -349,6 +355,7 @@ export class Runtime {
         actor.x = target.x;
         actor.y = target.y;
         actor.state = 'IDLE';
+        if (actorId) this.activeMoveActors.delete(actorId);
         co.done = true;
       }
       return;
@@ -389,6 +396,8 @@ export class Runtime {
           state: 'IDLE',
         });
         this.log('actor_enter', { actor: actorId, pos }, node.line);
+        this.enableFollowAfterEnter(actorId);
+        this.snapCameraToActors();
         break;
       }
       case 'EXIT': {
@@ -552,14 +561,51 @@ export class Runtime {
   }
 
   private updateFollowCamera(dt: number): void {
-    if (this.camera.mode !== 'follow' || !this.camera.target) return;
-    const actor = this.actors.get(this.camera.target);
-    if (!actor) return;
+    const shouldFollow = this.camera.mode === 'follow' || this.activeMoveActors.size > 0;
+    if (!shouldFollow) return;
+
     const k = 1 - Math.exp(-5 * dt);
-    const tx = actor.x + this.camera.offsetX;
-    const ty = actor.y + this.camera.offsetY;
+    let tx: number;
+    let ty: number;
+
+    if (this.activeMoveActors.size > 0) {
+      const moving = [...this.activeMoveActors]
+        .map((id) => this.actors.get(id))
+        .filter((a): a is ActorState => !!a);
+      if (moving.length === 0) return;
+      tx = moving.reduce((s, a) => s + a.x, 0) / moving.length;
+      ty = moving.reduce((s, a) => s + a.y, 0) / moving.length;
+    } else if (this.camera.target) {
+      const actor = this.actors.get(this.camera.target);
+      if (!actor) return;
+      tx = actor.x;
+      ty = actor.y;
+    } else {
+      const actors = [...this.actors.values()];
+      if (actors.length === 0) return;
+      tx = actors.reduce((s, a) => s + a.x, 0) / actors.length;
+      ty = actors.reduce((s, a) => s + a.y, 0) / actors.length;
+    }
+
+    tx += this.camera.offsetX;
+    ty += this.camera.offsetY;
     this.camera.x += (tx - this.camera.x) * k;
     this.camera.y += (ty - this.camera.y) * k;
+  }
+
+  /** 角色入场后立刻对准当前在场角色（转场后的首次定位，非镜头平移） */
+  private snapCameraToActors(): void {
+    const actors = [...this.actors.values()];
+    if (actors.length === 0) return;
+    const cx = actors.reduce((s, a) => s + a.x, 0) / actors.length;
+    const cy = actors.reduce((s, a) => s + a.y, 0) / actors.length;
+    this.camera.x = cx + this.camera.offsetX;
+    this.camera.y = cy + this.camera.offsetY;
+  }
+
+  private enableFollowAfterEnter(actorId: string): void {
+    this.camera.mode = 'follow';
+    this.camera.target = this.actors.size === 1 ? actorId : undefined;
   }
 
   private clampCameraToMap(): void {

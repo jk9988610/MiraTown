@@ -26,7 +26,6 @@ language: zh-CN
 
 @ENTER actor=mira at=(8, 6) facing=east
 @ENTER actor=old_chen at=(24, 6) facing=west
-@CAMERA preset=cam_wide
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「陈伯，我们去中间聊聊吧。」
