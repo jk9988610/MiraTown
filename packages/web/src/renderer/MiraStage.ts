@@ -21,6 +21,11 @@ const ACTOR_COLORS: Record<string, number> = {
 
 const LAMP_NEAR_WU = 1.2;
 
+/** 脚底 Y 越小越靠前（覆盖 Y 更大者）；升序绘制，返回值越大越靠前 */
+function depthSortKey(footY: number, bias = 0): number {
+  return -footY + bias;
+}
+
 function footRect(
   mapH: number,
   cx: number,
@@ -197,6 +202,7 @@ export class MiraStage {
     const lamps = snapshot.props
       .filter((p) => p.prop === 'lamp_post')
       .map((p) => ({ x: p.x, y: p.y }));
+    const actorById = new Map(snapshot.actors.map((a) => [a.id, a]));
     const items: DepthItem[] = [];
 
     for (const prop of snapshot.props) {
@@ -204,10 +210,9 @@ export class MiraStage {
         const nearActor = snapshot.actors.some(
           (a) => Math.hypot(a.x - prop.x, a.y - prop.y) < LAMP_NEAR_WU,
         );
-        const sortY = nearActor ? prop.y - 0.06 : prop.y + 0.06;
         items.push({
           id: `prop:${prop.id}`,
-          sortY,
+          sortY: depthSortKey(prop.y, nearActor ? -0.1 : 0),
           draw: (g) => this.drawLampPole(g, prop.x, prop.y, prop.state === 'on'),
         });
         continue;
@@ -216,31 +221,32 @@ export class MiraStage {
       if (prop.prop === 'bench') {
         items.push({
           id: `prop:${prop.id}`,
-          sortY: prop.y - 0.1,
+          sortY: depthSortKey(prop.y, -0.12),
           draw: (g) => this.drawBench(g, prop.x, prop.y),
         });
         continue;
       }
 
       if (prop.prop === 'umbrella') {
+        const holder = prop.attach ? actorById.get(prop.attach) : undefined;
+        const footY = holder?.y ?? prop.y;
         items.push({
           id: `prop:${prop.id}`,
-          sortY: prop.y + 0.02,
-          draw: (g) => this.drawUmbrella(g, prop.x, prop.y, prop.state),
+          sortY: depthSortKey(footY, 0.04),
+          draw: (g) => this.drawUmbrella(g, prop, snapshot),
         });
       }
     }
 
     for (const actor of snapshot.actors) {
       const lampDist = lamps.length > 0 ? this.nearestLampDist(actor.x, actor.y, lamps) : Infinity;
-      let sortY = actor.y;
-      if (actor.state === 'SITTING') sortY += 0.08;
-      if (lampDist < LAMP_NEAR_WU) sortY += 0.05;
-      else if (lampDist < Infinity) sortY -= 0.04;
+      let bias = 0;
+      if (actor.state === 'SITTING') bias += 0.15;
+      if (lampDist < LAMP_NEAR_WU) bias += 0.1;
 
       items.push({
         id: `actor:${actor.id}`,
-        sortY,
+        sortY: depthSortKey(actor.y, bias),
         draw: (g) => this.drawActor(g, actor, snapshot.T),
       });
     }
@@ -294,18 +300,40 @@ export class MiraStage {
     }
   }
 
-  private drawUmbrella(g: Graphics, x: number, y: number, state: string): void {
+  private drawUmbrella(
+    g: Graphics,
+    prop: {
+      x: number;
+      y: number;
+      state: string;
+      attach?: string;
+      offsetX?: number;
+      offsetY?: number;
+    },
+    snapshot: RuntimeSnapshot,
+  ): void {
     const size = SIZES.umbrella;
-    const r = footRect(this.mapH, x, y, size.w, size.h);
-    const poleTop = r.groundY - r.height * 0.88;
-    g.moveTo(r.centerX, r.groundY);
-    g.lineTo(r.centerX, poleTop);
+    let poleX = prop.x;
+    let poleY = prop.y;
+    if (prop.attach) {
+      const holder = snapshot.actors.find((a) => a.id === prop.attach);
+      if (holder) {
+        poleX = holder.x;
+        poleY = holder.y;
+      }
+    }
+    const sideWu = prop.offsetX ?? 0;
+    const base = footRect(this.mapH, poleX, poleY, 0.01, 0.01);
+    const poleTop = base.groundY - size.h * PX_PER_WU * 0.88;
+    const canopyCx = base.centerX + sideWu * PX_PER_WU;
+    g.moveTo(base.centerX, base.groundY);
+    g.lineTo(base.centerX, poleTop);
     g.stroke({ width: 5, color: 0x555555 });
-    if (state === 'open') {
+    if (prop.state === 'open') {
       const canopyR = (size.w * PX_PER_WU) / 2;
-      g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
+      g.arc(canopyCx, poleTop, canopyR, Math.PI, 0);
       g.fill({ color: 0xcc3333, alpha: 0.92 });
-      g.arc(r.centerX, poleTop, canopyR, Math.PI, 0);
+      g.arc(canopyCx, poleTop, canopyR, Math.PI, 0);
       g.stroke({ width: 3, color: 0x992222 });
     }
   }

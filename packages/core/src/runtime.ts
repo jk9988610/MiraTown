@@ -122,7 +122,6 @@ export class Runtime {
       if (!co.done) this.queue.push(co);
     }
 
-    this.updateUmbrellaTowardPartner();
     this.updateAttachedProps();
 
     this.updateFollowCamera(dt);
@@ -178,7 +177,9 @@ export class Runtime {
         x: p.x,
         y: p.y,
         state: p.state,
-        ...(p.attach ? { attach: p.attach } : {}),
+        ...(p.attach
+          ? { attach: p.attach, offsetX: p.offsetX, offsetY: p.offsetY }
+          : {}),
       })),
       camera: { ...this.camera },
       mapSize: scene ? { w: scene.width, h: scene.height } : null,
@@ -483,15 +484,7 @@ export class Runtime {
           offsetX: offset.x,
           offsetY: offset.y,
         });
-        if (asString(node.params.prop) === 'umbrella' && attach) {
-          this.updateUmbrellaTowardPartner();
-          const spawned = this.props.get(id);
-          const holder = attach ? this.actors.get(attach) : undefined;
-          if (spawned && holder) {
-            spawned.x = holder.x + spawned.offsetX;
-            spawned.y = holder.y + spawned.offsetY;
-          }
-        }
+        this.syncAttachedPropPosition(id);
         this.log('prop_spawn', { id, attach }, node.line);
         break;
       }
@@ -502,9 +495,10 @@ export class Runtime {
           const state = asString(node.params.state);
           if (state) prop.state = state;
           const offset = asVec2(node.params.offset);
-          if (offset) {
+          if (offset && id) {
             prop.offsetX = offset.x;
             prop.offsetY = offset.y;
+            this.syncAttachedPropPosition(id);
           }
           this.log('prop_set', { id, state: prop.state, offset }, node.line);
         }
@@ -684,19 +678,13 @@ export class Runtime {
     return Math.max(1.5, dist / speed);
   }
 
-  /** 伞面自动偏向另一名在场角色，避免先错后对 */
-  private updateUmbrellaTowardPartner(): void {
-    for (const prop of this.props.values()) {
-      if (prop.prop !== 'umbrella' || !prop.attach) continue;
-      const holder = this.actors.get(prop.attach);
-      if (!holder) continue;
-      const partner = [...this.actors.values()].find((a) => a.id !== prop.attach);
-      if (!partner) continue;
-      const dx = partner.x - holder.x;
-      if (Math.abs(dx) < 0.15) continue;
-      const toward = Math.sign(dx) * Math.min(1.2, Math.abs(dx) / 2);
-      prop.offsetX = toward;
-    }
+  private syncAttachedPropPosition(id: string): void {
+    const prop = this.props.get(id);
+    if (!prop?.attach) return;
+    const holder = this.actors.get(prop.attach);
+    if (!holder) return;
+    prop.x = holder.x + prop.offsetX;
+    prop.y = holder.y + prop.offsetY;
   }
 
   private updateAttachedProps(): void {
