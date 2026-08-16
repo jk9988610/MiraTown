@@ -28,10 +28,10 @@ language: zh-CN
 @SPAWN_PROP prop=lamp_post id=lamp_2 at=(22, 6) state=on
 @SPAWN_PROP prop=bench id=bench_1 at=(11, 6) state=empty
 
-@ENTER actor=mira at=(10.8, 6) facing=east
+@ENTER actor=mira at=(10.8, 6) facing=south
 @SIT actor=mira bench=bench_1 seat=0
 
-@ENTER actor=old_chen at=(27, 6) facing=west
+@ENTER actor=old_chen at=(27, 6) facing=south
 @SPAWN_PROP prop=umbrella id=umbrella_1 attach=old_chen offset=(0.4, 0) state=open
 @CUT preset=cam_follow target=mira
 
