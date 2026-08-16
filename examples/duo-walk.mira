@@ -24,12 +24,13 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@SPAWN_WALKWAY id=plaza_main_path from=(20, 25.85) to=(37, 25.85) width=1.2
+@SPAWN_WALKWAY id=plaza_main_lane_left from=(20, 25.55) to=(37, 25.55) width=1.2
+@SPAWN_WALKWAY id=plaza_main_lane_right from=(20, 26.15) to=(37, 26.15) width=1.2
 
 @LAYOUT id=plaza_main_row
 
-@ENTER actor=mira at=(31.5, 25.85) facing=south
-@ENTER actor=old_chen at=(32.5, 25.85) facing=south
+@ENTER actor=mira at=(28, 25.55) facing=south
+@ENTER actor=old_chen at=(28.5, 26.15) facing=south
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
 「陈伯，我们去路灯下坐坐吧。」
@@ -40,8 +41,13 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to_path=plaza_main_path duo_center=0.824 duo_side=left
-  @MOVE_TO actor=old_chen to_path=plaza_main_path duo_center=0.824 duo_side=right
+  @MOVE_TO actor=mira to_path=plaza_main_lane_left x=32
+  @MOVE_TO actor=old_chen to_path=plaza_main_lane_right x=32
+@END
+
+@PARALLEL
+  @MOVE_TO actor=mira to_path=plaza_main_lane_left x=33.6
+  @MOVE_TO actor=old_chen to_path=plaza_main_lane_right x=34.2
 @END
 
 @SIT actor=mira bench=bench_1 seat=0

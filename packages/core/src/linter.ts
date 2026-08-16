@@ -125,20 +125,35 @@ function resolveTargetPos(
   return null;
 }
 
-function collectParallelActions(block: BlockNode): Array<{ actor?: string; op: string; line: number; speaker?: string }> {
-  const actions: Array<{ actor?: string; op: string; line: number; speaker?: string }> = [];
+function collectParallelActions(
+  block: BlockNode,
+): Array<{ actor?: string; op: string; line: number; speaker?: string; to_path?: string; duo_side?: string }> {
+  const actions: Array<{
+    actor?: string;
+    op: string;
+    line: number;
+    speaker?: string;
+    to_path?: string;
+    duo_side?: string;
+  }> = [];
 
   function walk(nodes: ScriptNode[]): void {
     for (const node of nodes) {
       if (isDirective(node)) {
         if (['MOVE_TO', 'PLAY_ANIM', 'FACE', 'ENTER', 'EXIT'].includes(node.name)) {
-          actions.push({ actor: asString(node.params.actor), op: node.name, line: node.line });
+          actions.push({
+            actor: asString(node.params.actor),
+            op: node.name,
+            line: node.line,
+            to_path: asString(node.params.to_path),
+            duo_side: asString(node.params.duo_side),
+          });
         }
-        return;
+        continue;
       }
       if (node.name === 'DIALOGUE') {
         actions.push({ op: 'DIALOGUE', line: node.line, speaker: asString(node.params.speaker) });
-        return;
+        continue;
       }
       if (node.name === 'PARALLEL' || node.name === 'SEQUENCE') {
         walk(node.children);
@@ -538,6 +553,19 @@ function lintBlock(catalog: Catalog, ctx: LintContext, node: BlockNode, depth: n
             message: `说话者 ${speaker} 在 @DIALOGUE 并行期间不得移动或播动画`,
           });
         }
+      }
+    }
+
+    const duoMoves = actions.filter((a) => a.op === 'MOVE_TO' && a.duo_side);
+    if (duoMoves.length >= 2) {
+      const paths = duoMoves.map((m) => m.to_path).filter((p): p is string => !!p);
+      if (paths.length >= 2 && new Set(paths).size < paths.length) {
+        pushIssue(ctx, {
+          code: 'E_DUO_SAME_WALKWAY',
+          line: node.line,
+          message: '并肩移动时各角色须使用不同的人行道（to_path 不能相同）',
+          suggestion: '为左右各铺一条平行人行道，或去掉 duo_side 改为先后同路',
+        });
       }
     }
   }

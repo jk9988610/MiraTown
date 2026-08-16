@@ -351,6 +351,36 @@ duration_estimate: 30
     expect(chenDoneAt).toBeGreaterThan(0);
     expect(miraDoneAt).toBeGreaterThan(chenDoneAt);
   });
+
+  it('faces north when walking along vertical walkway', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@SPAWN_WALKWAY id=plaza_rain_north_left from=(19.5, 5.85) to=(19.5, 10) width=1.2
+@ENTER actor=mira at=(22, 5.85)
+@MOVE_TO actor=mira to_path=plaza_rain_north_left y=10
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    let sawNorth = false;
+    for (let i = 0; i < 600; i++) {
+      const snap = runtime.tick();
+      const mira = snap.actors.find((a) => a.id === 'mira');
+      if (mira?.state === 'WALKING' && mira.facing === 'north') sawNorth = true;
+      if (snap.completed) break;
+    }
+    expect(sawNorth).toBe(true);
+  });
 });
 
 describe('linter prop offset', () => {
@@ -418,6 +448,32 @@ duration_estimate: 30
     const ast = parseScript(source);
     const report = lintScript(ast, catalog);
     expect(report.errors.some((e) => e.code === 'E_WALKWAY_COINCIDE')).toBe(true);
+  });
+
+  it('rejects duo_side moves on the same walkway', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira, old_chen]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@SPAWN_WALKWAY id=path from=(10, 5.85) to=(28, 5.85) width=1.2
+@ENTER actor=mira at=(10, 5.85)
+@ENTER actor=old_chen at=(28, 5.85)
+@PARALLEL
+  @MOVE_TO actor=mira to_path=path duo_center=0.5 duo_side=left
+  @MOVE_TO actor=old_chen to_path=path duo_center=0.5 duo_side=right
+@END
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const report = lintScript(ast, catalog);
+    expect(report.errors.some((e) => e.code === 'E_DUO_SAME_WALKWAY')).toBe(true);
   });
 });
 
