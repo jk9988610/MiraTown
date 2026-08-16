@@ -684,9 +684,9 @@ export class Runtime {
     const dx = target.x - start.x;
     const dy = target.y - start.y;
     const eps = 0.04;
-    const pureY = Math.abs(dx) < eps && Math.abs(dy) > eps;
-    if (pureY) {
-      actor.facing = dy > 0 ? 'north' : 'south';
+    // 摄像机在 +Z（屏幕方向）：朝 -Y（屏幕近端）为正面 south，朝 +Y 为背面 north
+    if (Math.abs(dx) < eps && Math.abs(dy) > eps) {
+      actor.facing = dy < 0 ? 'south' : 'north';
       return;
     }
     if (Math.abs(dx) >= eps) {

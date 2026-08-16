@@ -30,6 +30,101 @@ const FEMALE_ACTORS = new Set(['mira', 'lily']);
 const SKIN = 0xffe0bd;
 const SKIN_SHADOW = 0xe8c9a8;
 
+type Facing = 'north' | 'south' | 'east' | 'west';
+
+/** 摄像机在 +Z（屏幕方向）；角色朝南（-Y）为正面，朝北（+Y）为背面 */
+const VIEW_FRONT: Facing = 'south';
+const VIEW_BACK: Facing = 'north';
+
+interface TorsoWidths {
+  chest: number;
+  waist: number;
+  hip: number;
+}
+
+function torsoWidths(baseW: number, female: boolean): TorsoWidths {
+  return female
+    ? { chest: baseW * 1.06, waist: baseW * 0.56, hip: baseW * 1.02 }
+    : { chest: baseW * 0.94, waist: baseW * 0.88, hip: baseW * 0.92 };
+}
+
+function drawFrontTorso(
+  g: Graphics,
+  cx: number,
+  top: number,
+  height: number,
+  widths: TorsoWidths,
+  color: number,
+): void {
+  const yTop = top + height * 0.04;
+  const yChest = top + height * 0.22;
+  const yWaist = top + height * 0.54;
+  const yHip = top + height * 0.78;
+  const yBot = top + height;
+
+  g.moveTo(cx - widths.chest * 0.82, yChest);
+  g.bezierCurveTo(cx - widths.chest, yTop, cx - widths.chest * 0.35, yTop, cx, yTop);
+  g.bezierCurveTo(cx + widths.chest * 0.35, yTop, cx + widths.chest, yTop, cx + widths.chest * 0.82, yChest);
+  g.bezierCurveTo(cx + widths.chest, yChest + height * 0.08, cx + widths.waist, yWaist, cx + widths.hip, yHip);
+  g.quadraticCurveTo(cx + widths.hip * 0.85, yBot, cx, yBot);
+  g.quadraticCurveTo(cx - widths.hip * 0.85, yBot, cx - widths.hip, yHip);
+  g.bezierCurveTo(cx - widths.waist, yWaist, cx - widths.chest, yChest + height * 0.08, cx - widths.chest * 0.82, yChest);
+  g.closePath();
+  g.fill(color);
+}
+
+function drawBackTorso(
+  g: Graphics,
+  cx: number,
+  top: number,
+  height: number,
+  widths: TorsoWidths,
+  color: number,
+): void {
+  const yTop = top + height * 0.04;
+  const yChest = top + height * 0.22;
+  const yWaist = top + height * 0.54;
+  const yHip = top + height * 0.78;
+  const yBot = top + height;
+
+  g.moveTo(cx - widths.chest * 0.78, yChest);
+  g.bezierCurveTo(cx - widths.chest * 0.95, yTop, cx - widths.chest * 0.3, yTop, cx, yTop);
+  g.bezierCurveTo(cx + widths.chest * 0.3, yTop, cx + widths.chest * 0.95, yTop, cx + widths.chest * 0.78, yChest);
+  g.bezierCurveTo(cx + widths.chest * 0.92, yChest + height * 0.1, cx + widths.waist * 1.02, yWaist, cx + widths.hip * 0.96, yHip);
+  g.quadraticCurveTo(cx + widths.hip * 0.8, yBot, cx, yBot);
+  g.quadraticCurveTo(cx - widths.hip * 0.8, yBot, cx - widths.hip * 0.96, yHip);
+  g.bezierCurveTo(cx - widths.waist * 1.02, yWaist, cx - widths.chest * 0.92, yChest + height * 0.1, cx - widths.chest * 0.78, yChest);
+  g.closePath();
+  g.fill(color);
+}
+
+function drawSideTorso(
+  g: Graphics,
+  cx: number,
+  top: number,
+  height: number,
+  widths: TorsoWidths,
+  color: number,
+  dir: 1 | -1,
+): void {
+  const yTop = top + height * 0.04;
+  const yChest = top + height * 0.24;
+  const yWaist = top + height * 0.54;
+  const yHip = top + height * 0.78;
+  const yBot = top + height;
+  const front = (w: number) => cx + dir * w * 0.42;
+  const back = (w: number) => cx - dir * w * 0.3;
+
+  g.moveTo(back(widths.chest), yTop);
+  g.bezierCurveTo(back(widths.chest * 0.7), yTop, front(widths.chest * 0.5), yChest - height * 0.04, front(widths.chest), yChest);
+  g.bezierCurveTo(front(widths.chest), yChest + height * 0.06, front(widths.waist * 0.55), yWaist, back(widths.waist * 0.7), yWaist);
+  g.bezierCurveTo(back(widths.hip * 0.85), yHip, back(widths.hip), yBot, cx - dir * widths.hip * 0.12, yBot);
+  g.lineTo(back(widths.hip * 0.9), yHip);
+  g.bezierCurveTo(back(widths.waist * 0.75), yWaist, back(widths.chest * 0.85), yChest, back(widths.chest), yTop);
+  g.closePath();
+  g.fill(color);
+}
+
 interface ActorPose {
   cx: number;
   groundY: number;
@@ -41,8 +136,6 @@ interface ActorPose {
   chestY: number;
   baseW: number;
 }
-
-type Facing = 'north' | 'south' | 'east' | 'west';
 
 function normalizeFacing(facing: string): Facing {
   if (facing === 'north' || facing === 'south' || facing === 'east' || facing === 'west') {
@@ -448,56 +541,22 @@ export class MiraStage {
     female: boolean,
   ): void {
     const { cx, bodyTop, bodyH, baseW } = pose;
-    const segH = bodyH / 3;
-    const chestRx = baseW * (female ? 1.08 : 0.92);
-    const waistRx = baseW * (female ? 0.62 : 0.88);
-    const hipRx = baseW * (female ? 1.02 : 0.94);
-    const y1 = bodyTop + segH * 0.5;
-    const y2 = bodyTop + segH * 1.5;
-    const y3 = bodyTop + segH * 2.5;
+    const widths = torsoWidths(baseW, female);
 
-    if (facing === 'south') {
-      g.ellipse(cx, y1, chestRx, segH * 0.52);
-      g.fill(bodyColor);
-      g.ellipse(cx, y2, waistRx, segH * 0.42);
-      g.fill(bodyColor);
-      g.ellipse(cx, y3, hipRx, segH * 0.52);
-      g.fill(bodyColor);
-      g.ellipse(cx, y1 - segH * 0.08, chestRx * 0.72, segH * 0.18);
-      g.fill({ color: SKIN, alpha: 0.35 });
+    if (facing === VIEW_FRONT) {
+      drawFrontTorso(g, cx, bodyTop, bodyH, widths, bodyColor);
+      g.ellipse(cx, bodyTop + bodyH * 0.1, widths.chest * 0.55, bodyH * 0.07);
+      g.fill({ color: SKIN, alpha: 0.4 });
       return;
     }
 
-    if (facing === 'north') {
-      const back = this.shade(bodyColor, 0.88);
-      g.ellipse(cx, y1, chestRx * 0.96, segH * 0.5);
-      g.fill(back);
-      g.ellipse(cx, y2, waistRx * 1.02, segH * 0.44);
-      g.fill(back);
-      g.ellipse(cx, y3, hipRx * 0.98, segH * 0.5);
-      g.fill(back);
-      g.ellipse(cx, y1 + segH * 0.12, chestRx * 0.55, segH * 0.14);
-      g.fill(SKIN_SHADOW);
+    if (facing === VIEW_BACK) {
+      drawBackTorso(g, cx, bodyTop, bodyH, widths, this.shade(bodyColor, 0.9));
       return;
     }
 
-    const east = facing === 'east';
-    const dir = east ? 1 : -1;
-    const chestCx = cx + dir * baseW * 0.22;
-    const waistCx = cx - dir * baseW * (female ? 0.08 : 0.02);
-    const hipCx = cx - dir * baseW * (female ? 0.18 : 0.1);
-    const profileChest = baseW * (female ? 0.72 : 0.78);
-    const profileWaist = baseW * (female ? 0.48 : 0.72);
-    const profileHip = baseW * (female ? 0.68 : 0.76);
-
-    g.ellipse(chestCx, y1, profileChest, segH * 0.5);
-    g.fill(bodyColor);
-    g.ellipse(waistCx, y2, profileWaist, segH * 0.4);
-    g.fill(bodyColor);
-    g.ellipse(hipCx, y3, profileHip, segH * 0.5);
-    g.fill(bodyColor);
-    g.ellipse(chestCx + dir * baseW * 0.18, y1, baseW * 0.22, segH * 0.28);
-    g.fill(SKIN);
+    const dir: 1 | -1 = facing === 'east' ? 1 : -1;
+    drawSideTorso(g, cx, bodyTop, bodyH, widths, bodyColor, dir);
   }
 
   private shade(color: number, factor: number): number {
@@ -518,46 +577,46 @@ export class MiraStage {
   ): void {
     const hr = headR * (sitting ? 0.92 : 1);
 
-    if (facing === 'north') {
-      g.circle(cx, headCy - hr * 0.08, hr * 1.05);
+    if (facing === VIEW_BACK) {
+      g.circle(cx, headCy - hr * 0.05, hr * 1.02);
       g.fill(hairColor);
-      g.ellipse(cx, headCy + hr * 0.42, hr * 0.72, hr * 0.28);
+      g.ellipse(cx, headCy + hr * 0.38, hr * 0.68, hr * 0.26);
       g.fill(SKIN_SHADOW);
       return;
     }
 
-    if (facing === 'south') {
+    if (facing === VIEW_FRONT) {
       g.circle(cx, headCy, hr);
       g.fill(SKIN);
       g.arc(cx, headCy - hr * 0.12, hr * 1.02, Math.PI, 0);
       g.fill(hairColor);
-      g.ellipse(cx - hr * 0.62, headCy - hr * 0.08, hr * 0.28, hr * 0.42);
+      g.ellipse(cx - hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4);
       g.fill(hairColor);
-      g.ellipse(cx + hr * 0.62, headCy - hr * 0.08, hr * 0.28, hr * 0.42);
+      g.ellipse(cx + hr * 0.58, headCy - hr * 0.06, hr * 0.26, hr * 0.4);
       g.fill(hairColor);
-      g.circle(cx - hr * 0.28, headCy + hr * 0.12, hr * 0.1);
+      g.circle(cx - hr * 0.28, headCy + hr * 0.1, hr * 0.1);
       g.fill(0x2a2520);
-      g.circle(cx + hr * 0.28, headCy + hr * 0.12, hr * 0.1);
+      g.circle(cx + hr * 0.28, headCy + hr * 0.1, hr * 0.1);
       g.fill(0x2a2520);
-      g.ellipse(cx, headCy + hr * 0.38, hr * 0.14, hr * 0.07);
+      g.ellipse(cx, headCy + hr * 0.36, hr * 0.13, hr * 0.06);
       g.fill(SKIN_SHADOW);
       return;
     }
 
     const east = facing === 'east';
-    const dir = east ? 1 : -1;
-    const backX = cx - dir * hr * 0.22;
-    const faceX = cx + dir * hr * 0.18;
+    const dir: 1 | -1 = east ? 1 : -1;
+    const faceX = cx + dir * hr * 0.2;
+    const backX = cx - dir * hr * 0.2;
 
-    g.ellipse(backX, headCy, hr * 0.78, hr * 0.95);
+    g.ellipse(backX, headCy, hr * 0.76, hr * 0.94);
     g.fill(hairColor);
-    g.ellipse(faceX, headCy + hr * 0.04, hr * 0.62, hr * 0.82);
+    g.ellipse(faceX, headCy + hr * 0.04, hr * 0.6, hr * 0.8);
     g.fill(SKIN);
-    g.ellipse(backX - dir * hr * 0.08, headCy - hr * 0.18, hr * 0.42, hr * 0.38);
+    g.ellipse(backX - dir * hr * 0.06, headCy - hr * 0.16, hr * 0.4, hr * 0.36);
     g.fill(hairColor);
-    g.circle(faceX + dir * hr * 0.08, headCy + hr * 0.02, hr * 0.09);
+    g.circle(faceX + dir * hr * 0.1, headCy + hr * 0.02, hr * 0.09);
     g.fill(0x2a2520);
-    g.ellipse(faceX + dir * hr * 0.42, headCy + hr * 0.06, hr * 0.12, hr * 0.08);
+    g.ellipse(faceX + dir * hr * 0.4, headCy + hr * 0.06, hr * 0.11, hr * 0.07);
     g.fill(SKIN_SHADOW);
   }
 
@@ -574,14 +633,7 @@ export class MiraStage {
     const female = FEMALE_ACTORS.has(actor.id);
 
     this.drawActorBody(g, pose, facing, bodyColor, female);
-
-    if (facing === 'north') {
-      this.drawActorHair(g, pose.cx, pose.headCy, pose.headR, facing, hairColor, sitting);
-      g.circle(pose.cx, pose.headCy + pose.headR * 0.15, pose.headR * 0.55);
-      g.fill(SKIN_SHADOW);
-    } else {
-      this.drawActorHair(g, pose.cx, pose.headCy, pose.headR, facing, hairColor, sitting);
-    }
+    this.drawActorHair(g, pose.cx, pose.headCy, pose.headR, facing, hairColor, sitting);
   }
 
   private applyCamera(snapshot: RuntimeSnapshot): void {
