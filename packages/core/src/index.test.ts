@@ -490,6 +490,36 @@ duration_estimate: 30
   });
 });
 
+describe('give prop', () => {
+  const catalog = loadDefaultCatalog();
+
+  it('transfers attached prop to another actor', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira, old_chen]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(10, 5)
+@ENTER actor=old_chen at=(12, 5)
+@SPAWN_PROP prop=scarf id=scarf_1 attach=mira offset=(0.2, 0) state=worn
+@GIVE actor=mira id=scarf_1 to=old_chen
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const scarf = snapshot.props.find((p) => p.id === 'scarf_1');
+    expect(scarf?.attach).toBe('old_chen');
+  });
+});
+
 describe('layout directive', () => {
   const catalog = loadDefaultCatalog();
 

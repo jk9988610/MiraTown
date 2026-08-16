@@ -65,6 +65,42 @@ props:
     states: [sealed, open]
     tags: [剧情]
 
+  - id: supermarket
+    display_name: 超市
+    width: 4.5
+    height: 3.2
+    anchor: foot
+    placeable: true
+    states: [closed, open]
+    tags: [建筑]
+
+  - id: shop_door
+    display_name: 店门
+    width: 1.4
+    height: 2.2
+    anchor: foot
+    placeable: true
+    states: [closed, open]
+    tags: [建筑]
+
+  - id: home_door
+    display_name: 家门
+    width: 1.0
+    height: 2.0
+    anchor: foot
+    placeable: true
+    states: [closed, open]
+    tags: [建筑]
+
+  - id: scarf
+    display_name: 围巾
+    width: 0.55
+    height: 1.1
+    anchor: foot
+    placeable: true
+    states: [folded, worn]
+    tags: [手持]
+
 scenes:
   - id: plaza
     display_name: 中心广场

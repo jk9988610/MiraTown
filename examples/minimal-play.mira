@@ -3,13 +3,14 @@ title: 雨夜的告白
 theme: 温情
 synopsis: |
   雨夜广场，米拉偶遇陈伯。一把伞、几句问候，让两个孤独的灵魂在石板路上靠近。
+  北路西行，超市里的围巾，以及各自家门前的灯光，为这一夜画上句号。
 dsl_version: "1.0"
 catalog_version: "1.0.0"
 tags: [爱情, 小镇, 雨夜]
 cast: [mira, old_chen]
 scenes: [plaza]
-acts: 1
-duration_estimate: 90
+acts: 2
+duration_estimate: 180
 tone: 治愈
 author: example
 language: zh-CN
@@ -88,5 +89,83 @@ language: zh-CN
 
 @NARRATION duration=2.5
 两个人肩并肩走在雨中，广场的灯光忽然变得柔和起来。
+
+@ACT id=2 title="北路与超市"
+
+@SPAWN_WALKWAY id=rain_west_lane_left from=(19.5, 10) to=(5, 10) width=1.2
+@SPAWN_WALKWAY id=rain_west_lane_right from=(20.5, 10) to=(6, 10) width=1.2
+@SPAWN_WALKWAY id=shop_aisle from=(13, 10.5) to=(16, 11.8) width=0.9
+
+@SPAWN_PROP prop=supermarket id=shop_1 at=(14, 9.4) state=open
+@SPAWN_PROP prop=shop_door id=shop_door_1 at=(14.2, 9.4) state=open
+@SPAWN_PROP prop=home_door id=mira_home_door at=(5.2, 9.4) state=open
+@SPAWN_PROP prop=home_door id=chen_home_door at=(6.3, 9.4) state=open
+
+@NARRATION duration=2.5
+北路尽头向左一转，雨夜里亮着灯的超市出现在前方。
+
+@PARALLEL
+  @MOVE_TO actor=mira to_path=rain_west_lane_left x=15.5
+  @MOVE_TO actor=old_chen to_path=rain_west_lane_right x=15.5
+@END
+
+@DIALOGUE speaker=old_chen auto=true auto_delay=2.5
+「进去买吧，我在门口等你。」
+@END
+
+@MOVE_TO actor=mira to_path=shop_aisle at=0.12
+@MOVE_TO actor=old_chen to_path=rain_west_lane_right x=14.8
+
+@FACE actor=old_chen facing=south
+
+@MOVE_TO actor=mira to_path=shop_aisle at=0.5
+
+@SPAWN_PROP prop=scarf id=scarf_1 attach=mira offset=(0.2, 0.05) state=worn
+
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「这条围巾，应该会暖和些。」
+@END
+
+@MOVE_TO actor=mira to_path=shop_aisle at=0.92
+
+@DIALOGUE speaker=mira auto=true auto_delay=1.5
+「老板，结账。」
+@END
+
+@MOVE_TO actor=mira to_path=rain_west_lane_left x=14.5
+
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「陈伯，送给您。」
+@END
+
+@GIVE actor=mira id=scarf_1 to=old_chen
+
+@DIALOGUE speaker=old_chen auto=true auto_delay=2.5
+「好孩子……谢谢你。」
+@END
+
+@NARRATION duration=2
+两人重新并肩上路，向西穿过雨幕。
+
+@PARALLEL
+  @MOVE_TO actor=mira to_path=rain_west_lane_left x=5.2
+  @MOVE_TO actor=old_chen to_path=rain_west_lane_right x=6.3
+@END
+
+@DIALOGUE speaker=mira auto=true auto_delay=2
+「到家了。晚安，陈伯。」
+@END
+
+@DIALOGUE speaker=old_chen auto=true auto_delay=2.5
+「晚安，米拉。路上小心。」
+@END
+
+@PARALLEL
+  @MOVE_TO actor=mira to=(5.2, 9.85)
+  @MOVE_TO actor=old_chen to=(6.3, 9.85)
+@END
+
+@NARRATION duration=2.5
+两扇门里的灯光先后暖起来，雨夜终于各自安静。
 
 @END_SCRIPT
