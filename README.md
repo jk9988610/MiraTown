@@ -47,8 +47,8 @@ npm install      # package-lock 有变时再执行
 
 ## 状态
 
-**S0 + S1 已实现**：Parser、Linter、Headless Runtime、Web 校验/播放界面。  
-下一步：S3 PixiJS 渲染。
+**S3 已实现**：PixiJS 渲染（广场、角色、道具、镜头、对话气泡）。  
+在线演示：https://jk9988610.github.io/MiraTown/（push `main` 自动部署）
 
 ## 三条铁律
 

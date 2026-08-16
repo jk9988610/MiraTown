@@ -116,3 +116,72 @@ textarea {
 
 .event .t { color: #7eb6ff; }
 .event .type { color: #c9a8ff; }
+
+.player-section {
+  margin-bottom: 1rem;
+}
+
+.stage-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #243040;
+  background: #0c1015;
+}
+
+.stage-canvas {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.stage-canvas canvas {
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+.stage-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: none;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 1.5rem;
+}
+
+.stage-overlay .bubble {
+  background: rgba(10, 16, 24, 0.92);
+  border: 1px solid #3d5168;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  max-width: 480px;
+  color: #e7ecf3;
+}
+
+.stage-overlay .bubble p {
+  margin: 0.35rem 0 0;
+}
+
+.stage-overlay .narration {
+  align-self: flex-start;
+  background: rgba(10, 16, 24, 0.85);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  color: #c9d6e8;
+  font-style: italic;
+}
+
+.stage-overlay .runtime-error {
+  background: rgba(80, 20, 20, 0.9);
+  color: #ffb4b4;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}

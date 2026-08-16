@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ParseError,
   compileScript,
@@ -10,6 +10,7 @@ import {
   type RuntimeEvent,
   type RuntimeSnapshot,
 } from '@miratown/core';
+import { StageView } from './components/StageView';
 
 const EXAMPLE_URL = `${import.meta.env.BASE_URL}examples/minimal-play.mira`;
 
@@ -22,6 +23,8 @@ export function App() {
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
   const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
+  const runtimeRef = useRef<Runtime | null>(null);
+  const rafRef = useRef<number>(0);
 
   const catalog = useMemo(() => loadEmbeddedCatalog(), []);
 
@@ -38,6 +41,9 @@ export function App() {
 
   useEffect(() => {
     void loadExample();
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, [loadExample]);
 
   const runLint = useCallback(() => {
@@ -58,32 +64,51 @@ export function App() {
   }, [source, catalog]);
 
   const runPlay = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
     const ast = runLint();
     if (!ast) return;
 
     setStage('playing');
+    setEvents([]);
     const ir = compileScript(ast);
     const runtime = new Runtime(catalog);
     runtime.load(ir);
-    const finalSnapshot = runtime.runToCompletion();
-    const collected = runtime.getEvents();
+    runtimeRef.current = runtime;
 
-    setEvents(collected);
-    setSnapshot(finalSnapshot);
-    setStage(finalSnapshot.error ? 'error' : 'done');
+    let last = performance.now();
+    const loop = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      const snap = runtime.tick(dt);
+      setSnapshot({ ...snap, actors: [...snap.actors], props: [...snap.props] });
+      if (!snap.completed && !snap.error) {
+        rafRef.current = requestAnimationFrame(loop);
+      } else {
+        setEvents(runtime.getEvents());
+        setStage(snap.error ? 'error' : 'done');
+        runtimeRef.current = null;
+      }
+    };
+    rafRef.current = requestAnimationFrame(loop);
   }, [runLint, catalog]);
 
   return (
     <div className="app">
       <header>
         <h1>米拉小镇 MiraTown</h1>
-        <p className="subtitle">S0 无 AI 模式 · 粘贴或加载剧本 → 校验 → Headless 演绎</p>
+        <p className="subtitle">加载剧本 → 校验 → PixiJS 演绎（1280×720）</p>
         <div className="actions">
           <button type="button" onClick={() => void loadExample()}>加载示例剧本</button>
           <button type="button" onClick={runLint}>校验</button>
-          <button type="button" className="primary" onClick={runPlay}>播放（Headless）</button>
+          <button type="button" className="primary" onClick={runPlay}>播放</button>
         </div>
       </header>
+
+      <section className="player-section">
+        <h2>演绎舞台</h2>
+        <StageView snapshot={snapshot} />
+      </section>
 
       <div className="grid">
         <section>
@@ -115,16 +140,6 @@ export function App() {
                   <code>{issue.code}</code> L{issue.line}: {issue.message}
                 </div>
               ))}
-              {lintReport.passed && lintReport.errors.length === 0 && lintReport.warnings.length === 0 && (
-                <p className="ok">无错误</p>
-              )}
-            </div>
-          )}
-
-          {snapshot && (
-            <div className="snapshot">
-              <h3>最终快照</h3>
-              <pre>{JSON.stringify(snapshot, null, 2)}</pre>
             </div>
           )}
         </section>
