@@ -283,29 +283,6 @@ export class Runtime {
         done: false,
       })) as ActiveCoroutine[];
 
-      const moveChildren = children.filter((c) => c.node.op === 'MOVE_TO');
-      const syncArrival =
-        moveChildren.length > 1 &&
-        moveChildren.every((c) => c.node.params.duo_center !== undefined);
-      if (syncArrival) {
-        let maxDur = 0;
-        const moveStarts = new Map<ActiveCoroutine, { start: Vec2; target: Vec2 }>();
-        for (const child of moveChildren) {
-          const actorId = asString(child.node.params.actor);
-          const actor = actorId ? this.actors.get(actorId) : undefined;
-          const target = this.resolveMoveTarget(child.node.params);
-          if (actor && target) {
-            const start = { x: actor.x, y: actor.y };
-            moveStarts.set(child, { start, target });
-            maxDur = Math.max(maxDur, this.computeMoveDuration(child.node, start, target));
-          }
-        }
-        for (const child of moveChildren) {
-          const st = moveStarts.get(child);
-          if (st) child.meta = { start: st.start, parallelDuration: maxDur };
-        }
-      }
-
       co.meta = { started: true, children };
     }
     const children = co.meta.children as ActiveCoroutine[];
@@ -698,8 +675,7 @@ export class Runtime {
           if (target) {
             const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
             co.meta = { ...co.meta, start };
-            const synced = co.meta?.parallelDuration as number | undefined;
-            co.duration = synced ?? this.computeMoveDuration(node, start, target);
+            co.duration = this.computeMoveDuration(node, start, target);
           }
         }
         break;
@@ -886,7 +862,7 @@ export class Runtime {
     const dist = walkway
       ? walkwayMoveDistance(walkway.points, start, target)
       : Math.hypot(target.x - start.x, target.y - start.y);
-    return Math.max(1.5, dist / speed);
+    return Math.max(0.05, dist / speed);
   }
 
   private applyMoveFacing(actor: ActorState, start: Vec2, target: Vec2): void {

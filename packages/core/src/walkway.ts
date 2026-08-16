@@ -4,10 +4,28 @@ function segmentLength(a: Vec2, b: Vec2): number {
   return Math.hypot(b.x - a.x, b.y - a.y);
 }
 
+function samePoint(a: Vec2, b: Vec2, eps = 1e-4): boolean {
+  return Math.hypot(a.x - b.x, a.y - b.y) <= eps;
+}
+
+function pushIfDistinct(route: Vec2[], p: Vec2): void {
+  if (route.length === 0 || !samePoint(route[route.length - 1], p)) {
+    route.push({ ...p });
+  }
+}
+
 export function walkwayTotalLength(points: Vec2[]): number {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
     total += segmentLength(points[i - 1], points[i]);
+  }
+  return total;
+}
+
+function routeLength(route: Vec2[]): number {
+  let total = 0;
+  for (let i = 1; i < route.length; i++) {
+    total += segmentLength(route[i - 1], route[i]);
   }
   return total;
 }
@@ -89,38 +107,75 @@ export function distanceToWalkway(points: Vec2[], p: Vec2): number {
 
 const ON_PATH_EPS = 0.08;
 
-/** 路径移动距离：离道时按直线，在道上时按弧长 */
-export function walkwayMoveDistance(points: Vec2[], start: Vec2, target: Vec2): number {
+/** 构建移动折线：离道→上道→沿道弧长→离道，保证距离与插值一致 */
+export function buildWalkMoveRoute(points: Vec2[], start: Vec2, target: Vec2): Vec2[] {
   const startOn = distanceToWalkway(points, start) <= ON_PATH_EPS;
   const targetOn = distanceToWalkway(points, target) <= ON_PATH_EPS;
-  if (startOn && targetOn) {
-    const total = walkwayTotalLength(points);
-    const startT = walkwayFractionAtPoint(points, start);
-    const endT = walkwayFractionAtPoint(points, target);
-    return Math.abs(endT - startT) * total;
+
+  if (!startOn && !targetOn) {
+    return [{ ...start }, { ...target }];
   }
-  return Math.hypot(target.x - start.x, target.y - start.y);
+
+  const route: Vec2[] = [];
+  pushIfDistinct(route, start);
+
+  const enter = startOn ? start : closestPointOnWalkway(points, start);
+  if (!startOn) pushIfDistinct(route, enter);
+
+  const exit = targetOn ? target : closestPointOnWalkway(points, target);
+  const startT = walkwayFractionAtPoint(points, enter);
+  const endT = walkwayFractionAtPoint(points, exit);
+  const arcLen = Math.abs(endT - startT) * walkwayTotalLength(points);
+
+  if (arcLen > 1e-4) {
+    const steps = Math.max(2, Math.ceil(arcLen / 0.2));
+    for (let s = 1; s <= steps; s++) {
+      const t = startT + (endT - startT) * (s / steps);
+      pushIfDistinct(route, pointAtWalkwayFraction(points, t));
+    }
+  } else {
+    pushIfDistinct(route, exit);
+  }
+
+  if (!targetOn) pushIfDistinct(route, target);
+  return route;
 }
 
-/** 路径移动插值：离道时直线走过去，在道上时沿弧长行走 */
+function sampleRoute(route: Vec2[], progress: number): Vec2 {
+  if (route.length === 0) return { x: 0, y: 0 };
+  if (route.length === 1) return { ...route[0] };
+  const clamped = Math.max(0, Math.min(1, progress));
+  const total = routeLength(route);
+  if (total <= 1e-6) return { ...route[0] };
+
+  let dist = clamped * total;
+  for (let i = 1; i < route.length; i++) {
+    const len = segmentLength(route[i - 1], route[i]);
+    if (dist <= len) {
+      const u = len > 0 ? dist / len : 0;
+      return {
+        x: route[i - 1].x + (route[i].x - route[i - 1].x) * u,
+        y: route[i - 1].y + (route[i].y - route[i - 1].y) * u,
+      };
+    }
+    dist -= len;
+  }
+  return { ...route[route.length - 1] };
+}
+
+/** 路径移动距离：按实际行走折线长度计算 */
+export function walkwayMoveDistance(points: Vec2[], start: Vec2, target: Vec2): number {
+  return routeLength(buildWalkMoveRoute(points, start, target));
+}
+
+/** 路径移动插值：按折线弧长匀速采样 */
 export function interpolateWalkwayMove(
   points: Vec2[],
   start: Vec2,
   target: Vec2,
   progress: number,
 ): Vec2 {
-  const startOn = distanceToWalkway(points, start) <= ON_PATH_EPS;
-  const targetOn = distanceToWalkway(points, target) <= ON_PATH_EPS;
-  if (startOn && targetOn) {
-    const startT = walkwayFractionAtPoint(points, start);
-    const endT = walkwayFractionAtPoint(points, target);
-    const t = startT + (endT - startT) * progress;
-    return pointAtWalkwayFraction(points, t);
-  }
-  return {
-    x: start.x + (target.x - start.x) * progress,
-    y: start.y + (target.y - start.y) * progress,
-  };
+  return sampleRoute(buildWalkMoveRoute(points, start, target), progress);
 }
 
 export function resolveWalkwayTarget(
@@ -159,4 +214,16 @@ export function duoWalkPositions(
     left: closestPointOnWalkway(walkway.points, { x: center.x - half, y: center.y }),
     right: closestPointOnWalkway(walkway.points, { x: center.x + half, y: center.y }),
   };
+}
+
+/** 两条人行道是否完全重合（同起止点与宽度） */
+export function walkwaysFullyCoincide(a: WalkwayDef, b: WalkwayDef): boolean {
+  if (a.width !== b.width || a.points.length !== 2 || b.points.length !== 2) return false;
+  const [a0, a1] = a.points;
+  const [b0, b1] = b.points;
+  const forward =
+    samePoint(a0, b0, 1e-3) && samePoint(a1, b1, 1e-3);
+  const reverse =
+    samePoint(a0, b1, 1e-3) && samePoint(a1, b0, 1e-3);
+  return forward || reverse;
 }
