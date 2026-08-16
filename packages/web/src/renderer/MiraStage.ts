@@ -191,11 +191,13 @@ export class MiraStage {
       }
       g.clear();
       const size = SIZES[actor.id as keyof typeof SIZES] ?? { w: 0.8, h: 1.6 };
+      const bob =
+        actor.state === 'WALKING' ? Math.sin(snapshot.T * 14) * (PX_PER_WU * 0.08) : 0;
       const r = footRect(this.mapH, actor.x, actor.y, size.w, size.h);
       const color = ACTOR_COLORS[actor.id] ?? 0xffffff;
-      g.roundRect(r.left, r.top, r.width, r.height, 6);
+      g.roundRect(r.left, r.top - bob, r.width, r.height, 6);
       g.fill(color);
-      g.circle(r.centerX, r.top + 10, 8);
+      g.circle(r.centerX, r.top + 10 - bob, 8);
       g.fill(0xffe0bd);
     }
 

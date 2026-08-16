@@ -7,7 +7,7 @@ const TICK = 1 / 60;
 /** 默认步行速度（wu/s），未指定 duration 时按路程自动计算 */
 const DEFAULT_WALK_SPEED = 1.2;
 /** 角色脚底中心最小间距（wu），仅防止完全重叠 */
-const MIN_ACTOR_SPACING = 0.45;
+const MIN_ACTOR_SPACING = 0.28;
 
 interface ActorState {
   id: string;
@@ -153,6 +153,19 @@ export class Runtime {
     return [...this.events];
   }
 
+  /** 快进到首个角色入场并定位镜头，避免首帧画面不在 NPC 身上 */
+  primeToFirstActor(maxSteps = 300): RuntimeSnapshot {
+    for (let i = 0; i < maxSteps; i++) {
+      if (this.actors.size > 0) {
+        this.snapCameraToActors();
+        return this.snapshot();
+      }
+      if (this.completed || this.error) break;
+      this.tick(TICK);
+    }
+    return this.snapshot();
+  }
+
   private snapshot(): RuntimeSnapshot {
     const scene = this.sceneId ? this.catalog.scenes.get(this.sceneId) : null;
     return {
@@ -250,14 +263,32 @@ export class Runtime {
 
   private runParallel(co: ActiveCoroutine, dt: number): void {
     if (!co.meta?.started) {
-      co.meta = { started: true, children: nodeChildren(co).map((child) => ({
+      const children = nodeChildren(co).map((child) => ({
         node: child,
         childIndex: 0,
         elapsed: 0,
         duration: 0,
         blocking: true,
         done: false,
-      })) };
+      })) as ActiveCoroutine[];
+
+      const moveChildren = children.filter((c) => c.node.op === 'MOVE_TO');
+      if (moveChildren.length > 1) {
+        let maxDur = 0;
+        for (const child of moveChildren) {
+          const actorId = asString(child.node.params.actor);
+          const actor = actorId ? this.actors.get(actorId) : undefined;
+          const target = this.resolveMoveTarget(child.node.params);
+          if (actor && target) {
+            const start = { x: actor.x, y: actor.y };
+            const dur = this.computeMoveDuration(child.node, start, target);
+            maxDur = Math.max(maxDur, dur);
+            child.meta = { start, parallelDuration: maxDur };
+          }
+        }
+      }
+
+      co.meta = { started: true, children };
     }
     const children = co.meta.children as ActiveCoroutine[];
     let allDone = true;
@@ -382,7 +413,9 @@ export class Runtime {
         actor.y = target.y;
         actor.state = 'IDLE';
         if (actorId) this.activeMoveActors.delete(actorId);
-        this.separateOverlappingActors();
+        if (this.activeMoveActors.size === 0) {
+          this.separateOverlappingActors();
+        }
         co.done = true;
       }
       return;
@@ -509,9 +542,10 @@ export class Runtime {
         if (actor && co) {
           const target = this.resolveMoveTarget(node.params);
           if (target) {
-            const start = { x: actor.x, y: actor.y };
+            const start = (co.meta?.start as Vec2) ?? { x: actor.x, y: actor.y };
             co.meta = { ...co.meta, start };
-            co.duration = this.computeMoveDuration(node, start, target);
+            const synced = co.meta?.parallelDuration as number | undefined;
+            co.duration = synced ?? this.computeMoveDuration(node, start, target);
           }
         }
         break;
@@ -524,7 +558,7 @@ export class Runtime {
   private estimateDuration(node: IRNode): number {
     switch (node.op) {
       case 'ENTER':
-        return 0.3;
+        return 0;
       case 'EXIT':
         return asNumber(node.params.duration, 0.5);
       case 'WAIT':
