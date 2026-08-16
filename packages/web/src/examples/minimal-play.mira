@@ -42,7 +42,7 @@ language: zh-CN
 「今晚的雨，好像永远不会停。」
 @END
 
-@MOVE_TO actor=old_chen to=(21, 6) speed=1.2
+@MOVE_TO actor=old_chen to=(21, 6)
 
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
 「年轻人，伞借你一半。」
@@ -54,11 +54,9 @@ language: zh-CN
 「谢谢您，陈伯。我这就过来。」
 @END
 
-@SET_PROP id=umbrella_1 offset=(-0.4, 0)
-
 @PARALLEL
-  @MOVE_TO actor=mira to=(19.5, 6) speed=1.2
-  @MOVE_TO actor=old_chen to=(20.5, 6) speed=1.2
+  @MOVE_TO actor=mira to=(19.5, 6)
+  @MOVE_TO actor=old_chen to=(20.5, 6)
 @END
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
@@ -73,8 +71,8 @@ language: zh-CN
 @FACE actor=old_chen facing=north
 
 @PARALLEL
-  @MOVE_TO actor=mira to=(19.5, 10) speed=1.2
-  @MOVE_TO actor=old_chen to=(20.5, 10) speed=1.2
+  @MOVE_TO actor=mira to=(19.5, 10)
+  @MOVE_TO actor=old_chen to=(20.5, 10)
 @END
 
 @NARRATION duration=2.5
