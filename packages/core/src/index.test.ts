@@ -219,6 +219,7 @@ duration_estimate: 30
     const ids = snapshot.walkways.map((w) => w.id);
     expect(ids).toContain('plaza_rain_path');
     expect(ids).toContain('plaza_rain_lane_left');
+    expect(ids).toContain('plaza_rain_north_left');
     expect(ids).toContain('rain_west_lane_left');
   });
 

@@ -25,6 +25,10 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
+@SPAWN_PROP prop=street_sign id=sign_plaza at=(16, 5.55) state=plaza_row
+@SPAWN_PROP prop=street_sign id=sign_north at=(19.2, 7.8) state=north_road
+@SPAWN_PROP prop=street_sign id=sign_west at=(11, 10) state=west_road
+
 @SPAWN_PROP prop=supermarket id=shop_1 at=(14, 10.6) state=open
 @SPAWN_PROP prop=shop_door id=shop_door_1 at=(14.2, 10.6) state=open
 @SPAWN_PROP prop=home_door id=mira_home_door at=(5.2, 10.6) state=open
@@ -60,8 +64,8 @@ language: zh-CN
 @END
 
 @PARALLEL
-  @MOVE_TO actor=mira to_path=plaza_rain_lane_left x=20
-  @MOVE_TO actor=old_chen to_path=plaza_rain_lane_right x=20
+  @MOVE_TO actor=mira to_path=plaza_rain_lane_left at=1.0
+  @MOVE_TO actor=old_chen to_path=plaza_rain_lane_right at=1.0
 @END
 
 @DIALOGUE speaker=mira auto=true auto_delay=2
@@ -76,18 +80,24 @@ language: zh-CN
 「雨夜广场，走起来也没那么孤单了。」
 @END
 
+@MOVE_TO actor=mira to_path=plaza_rain_north_left at=0
+@MOVE_TO actor=old_chen to_path=plaza_rain_north_right at=0
+
 @PARALLEL
-  @MOVE_TO actor=mira to_path=plaza_rain_lane_left y=10
-  @MOVE_TO actor=old_chen to_path=plaza_rain_lane_right y=10
+  @MOVE_TO actor=mira to_path=plaza_rain_north_left y=10
+  @MOVE_TO actor=old_chen to_path=plaza_rain_north_right y=10
 @END
 
 @NARRATION duration=2.5
-两个人肩并肩走在雨中，广场的灯光忽然变得柔和起来。
+两个人在路口并肩转向，踏上北路，广场的灯光在身后渐渐柔和。
 
 @ACT id=2 title="北路与超市"
 
 @NARRATION duration=2.5
-北路尽头向左一转，雨夜里亮着灯的超市出现在前方。
+沿北路向西，雨夜里亮着灯的超市出现在前方。
+
+@MOVE_TO actor=mira to_path=rain_west_lane_left at=0
+@MOVE_TO actor=old_chen to_path=rain_west_lane_right at=0
 
 @PARALLEL
   @MOVE_TO actor=mira to_path=rain_west_lane_left x=15.5
@@ -95,7 +105,7 @@ language: zh-CN
 @END
 
 @DIALOGUE speaker=old_chen auto=true auto_delay=2.5
-「进去买吧，我在门口等你。」
+「你去买吧，我在门口等你。」
 @END
 
 @MOVE_TO actor=mira to_path=rain_west_lane_left x=14.2
@@ -109,11 +119,12 @@ language: zh-CN
 
 @CAST actor=cashier
 
-@SPAWN_PROP prop=shop_shelf id=shelf_1 at=(6, 8) state=stocked
+@SPAWN_PROP prop=shop_door id=shop_interior_door at=(5.2, 2) state=open
+@SPAWN_PROP prop=shop_shelf id=shelf_1 at=(5, 8) state=stocked
 @SPAWN_PROP prop=checkout_counter id=checkout_1 at=(4, 2) state=open
 @ENTER actor=cashier at=(4.5, 2) facing=east
 
-@MOVE_TO actor=mira to=(6, 2) duration=0
+@MOVE_TO actor=mira to=(5.2, 2) duration=0
 @FACE actor=mira facing=north
 
 @MOVE_TO actor=mira to_path=shop_interior_aisle y=7.8
@@ -136,9 +147,16 @@ language: zh-CN
 「好的，请慢走。」
 @END
 
+@MOVE_TO actor=mira to=(5.2, 2) duration=0
+@FACE actor=mira facing=south
+
 @EXIT actor=cashier
 
 @SCENE id=plaza time=evening weather=rain
+
+@SPAWN_PROP prop=street_sign id=sign_plaza at=(16, 5.55) state=plaza_row
+@SPAWN_PROP prop=street_sign id=sign_north at=(19.2, 7.8) state=north_road
+@SPAWN_PROP prop=street_sign id=sign_west at=(11, 10) state=west_road
 
 @LAYOUT id=plaza_rain_row
 @SPAWN_PROP prop=supermarket id=shop_1 at=(14, 10.6) state=open
@@ -163,6 +181,9 @@ language: zh-CN
 @NARRATION duration=2
 两人重新并肩上路，向西穿过雨幕。
 
+@MOVE_TO actor=mira to_path=rain_west_lane_left at=0
+@MOVE_TO actor=old_chen to_path=rain_west_lane_right at=0
+
 @PARALLEL
   @MOVE_TO actor=mira to_path=rain_west_lane_left x=5.2
   @MOVE_TO actor=old_chen to_path=rain_west_lane_right x=6.3
@@ -176,10 +197,8 @@ language: zh-CN
 「晚安，米拉。路上小心。」
 @END
 
-@PARALLEL
-  @MOVE_TO actor=mira to=(5.2, 10)
-  @MOVE_TO actor=old_chen to=(6.3, 10)
-@END
+@FACE actor=mira facing=north
+@FACE actor=old_chen facing=north
 
 @NARRATION duration=2.5
 两扇门里的灯光先后暖起来，雨夜终于各自安静。

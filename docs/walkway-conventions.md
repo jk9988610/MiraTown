@@ -46,7 +46,8 @@
 
 - 左右道**成对**定义，中心线间距与 `DUO_WALK_SPACING`（1.0 wu）匹配
 - 全场景默认 `width: 1.2`（`SIDEWALK_WIDTH`），室内窄道可用 `1.0`
-- **拐弯做进同一条 lane**，不要用额外的 `_north_` / `_west_` 短道拼接（避免角色折回）
+- **只画直道**：每条 walkway 为水平或竖直线段；拐弯在路口用 `_north_` / `_west_` 等接续段
+- **换道等待**：顺序 `@MOVE_TO` 换到新道（`at=0`），两人都到位后再 `@PARALLEL` 并肩
 
 ---
 
@@ -54,10 +55,10 @@
 
 ```yaml
 walkways:
-  - id: plaza_rain_lane_left
+  - id: plaza_rain_north_left
     scene: plaza
     points:
-      - { x: 10, y: 5.55 }
+      - { x: 19.5, y: 5.55 }
       - { x: 19.5, y: 10 }
     width: 1.2
     visible_default: true
@@ -73,15 +74,20 @@ walkways:
 
 ---
 
-## 5. 路口拓扑（不折回）
+## 5. 路口拓扑（直道 + 换道）
 
 ```
-❌ 错误：东西道走到 x=24，再用独立北道从 x=19.5 折回北上
+东段并肩:
+  plaza_rain_lane_left:   (10, 5.55) → (19.5, 5.55)
+  plaza_rain_lane_right:  (10, 6.15) → (20.5, 6.15)
 
-✅ 正确：lane 从起点经路口直达北路终点
-  plaza_rain_lane_left:  (10, 5.55) → (19.5, 10)
-  plaza_rain_lane_right: (10, 6.15) → (20.5, 10)
-  rain_west_lane_left:   (19.5, 10) → (5, 10)    # 在 y=10 接续
+换道（顺序 @MOVE_TO，先到的等对方）→ 北段并肩:
+  plaza_rain_north_left:  (19.5, 5.55) → (19.5, 10)
+  plaza_rain_north_right: (20.5, 6.15) → (20.5, 10)
+
+换道 → 西段并肩:
+  rain_west_lane_left:  (19.5, 10) → (5, 10)
+  rain_west_lane_right: (20.5, 10) → (6, 10)
 ```
 
 ---
@@ -92,8 +98,8 @@ walkways:
 
 ```mira
 @PARALLEL
-  @MOVE_TO actor=mira     to_path=plaza_rain_lane_left  x=20
-  @MOVE_TO actor=old_chen to_path=plaza_rain_lane_right x=20
+  @MOVE_TO actor=mira     to_path=plaza_rain_lane_left  at=1.0
+  @MOVE_TO actor=old_chen to_path=plaza_rain_lane_right at=1.0
 @END
 ```
 
@@ -101,18 +107,24 @@ walkways:
 - 目标用**同一语义坐标**（都 `x=20` 或都 `y=10`）
 - `@PARALLEL` 内 ≥2 个 `@MOVE_TO` 时，引擎自动 **abreast**（横向对齐、同时到达）
 
-### 过路口继续走
+### 过路口换道（先换等对方，再并肩）
 
 ```mira
+@MOVE_TO actor=mira     to_path=plaza_rain_north_left  at=0
+@MOVE_TO actor=old_chen to_path=plaza_rain_north_right at=0
+
 @PARALLEL
-  @MOVE_TO actor=mira     to_path=plaza_rain_lane_left  y=10
-  @MOVE_TO actor=old_chen to_path=plaza_rain_lane_right y=10
+  @MOVE_TO actor=mira     to_path=plaza_rain_north_left  y=10
+  @MOVE_TO actor=old_chen to_path=plaza_rain_north_right y=10
 @END
 ```
 
-### 切换路段（如转入西路）
+### 切换路段（换到西路后并肩）
 
 ```mira
+@MOVE_TO actor=mira     to_path=rain_west_lane_left  at=0
+@MOVE_TO actor=old_chen to_path=rain_west_lane_right at=0
+
 @PARALLEL
   @MOVE_TO actor=mira     to_path=rain_west_lane_left  x=15.5
   @MOVE_TO actor=old_chen to_path=rain_west_lane_right x=15.5
