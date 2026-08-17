@@ -25,12 +25,6 @@ language: zh-CN
 @CAST actor=mira
 @CAST actor=old_chen
 
-@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2
-@SPAWN_WALKWAY id=plaza_rain_lane_left from=(10, 5.55) to=(19.5, 10) width=1.2
-@SPAWN_WALKWAY id=plaza_rain_lane_right from=(10, 6.15) to=(20.5, 10) width=1.2
-@SPAWN_WALKWAY id=rain_west_lane_left from=(19.5, 10) to=(5, 10) width=1.2
-@SPAWN_WALKWAY id=rain_west_lane_right from=(20.5, 10) to=(6, 10) width=1.2
-
 @SPAWN_PROP prop=supermarket id=shop_1 at=(14, 10.6) state=open
 @SPAWN_PROP prop=shop_door id=shop_door_1 at=(14.2, 10.6) state=open
 @SPAWN_PROP prop=home_door id=mira_home_door at=(5.2, 10.6) state=open
@@ -115,7 +109,6 @@ language: zh-CN
 
 @CAST actor=cashier
 
-@SPAWN_WALKWAY id=shop_interior_aisle from=(6, 2) to=(6, 8) width=1.0
 @SPAWN_PROP prop=shop_shelf id=shelf_1 at=(6, 8) state=stocked
 @SPAWN_PROP prop=checkout_counter id=checkout_1 at=(4, 2) state=open
 @ENTER actor=cashier at=(4.5, 2) facing=east
@@ -146,12 +139,6 @@ language: zh-CN
 @EXIT actor=cashier
 
 @SCENE id=plaza time=evening weather=rain
-
-@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2
-@SPAWN_WALKWAY id=plaza_rain_lane_left from=(10, 5.55) to=(19.5, 10) width=1.2
-@SPAWN_WALKWAY id=plaza_rain_lane_right from=(10, 6.15) to=(20.5, 10) width=1.2
-@SPAWN_WALKWAY id=rain_west_lane_left from=(19.5, 10) to=(5, 10) width=1.2
-@SPAWN_WALKWAY id=rain_west_lane_right from=(20.5, 10) to=(6, 10) width=1.2
 
 @LAYOUT id=plaza_rain_row
 @SPAWN_PROP prop=supermarket id=shop_1 at=(14, 10.6) state=open
