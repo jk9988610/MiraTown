@@ -10,20 +10,14 @@ import {
   type RuntimeEvent,
   type RuntimeSnapshot,
 } from '@miratown/core';
+import { Link } from 'react-router-dom';
 import { StageView } from './components/StageView';
 import { CopyButton, dedupeEvents, formatEvents, formatLintReport } from './components/CopyButton';
-import simpleWalkExample from './examples/simple-walk.mira?raw';
-import duoWalkExample from './examples/duo-walk.mira?raw';
-import minimalPlayExample from './examples/minimal-play.mira?raw';
+import templateExample from './examples/template.mira?raw';
 
 type Stage = 'idle' | 'linting' | 'playing' | 'done' | 'error';
-type ExampleId = 'simple' | 'duo' | 'full';
 
-const EXAMPLES: Record<ExampleId, { label: string; source: string }> = {
-  simple: { label: '入门：单人行走', source: simpleWalkExample },
-  duo: { label: '入门：双人同行', source: duoWalkExample },
-  full: { label: '完整：雨夜告白', source: minimalPlayExample },
-};
+const DEFAULT_SOURCE = templateExample;
 
 export function App() {
   const [source, setSource] = useState('');
@@ -32,25 +26,23 @@ export function App() {
   const [events, setEvents] = useState<RuntimeEvent[]>([]);
   const [snapshot, setSnapshot] = useState<RuntimeSnapshot | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
-  const [exampleId, setExampleId] = useState<ExampleId>('simple');
   const [showWalkways, setShowWalkways] = useState(true);
   const runtimeRef = useRef<Runtime | null>(null);
   const rafRef = useRef<number>(0);
 
   const catalog = useMemo(() => loadEmbeddedCatalog(), []);
 
-  const loadExample = useCallback((id: ExampleId = exampleId) => {
-    setSource(EXAMPLES[id].source);
-    setExampleId(id);
+  const loadTemplate = useCallback(() => {
+    setSource(DEFAULT_SOURCE);
     setLintReport(null);
     setEvents([]);
     setSnapshot(null);
     setParseError(null);
     setStage('idle');
-  }, [exampleId]);
+  }, []);
 
   useEffect(() => {
-    setSource(EXAMPLES.simple.source);
+    setSource(DEFAULT_SOURCE);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
@@ -126,18 +118,14 @@ export function App() {
     <div className="app">
       <header>
         <h1>米拉小镇 MiraTown</h1>
-        <p className="subtitle">加载剧本 → 校验 → PixiJS 演绎（1280×720）</p>
+        <p className="subtitle">地图绘制 → 导出 YAML → 剧本仅引用地图内容（1280×720）</p>
         <div className="actions">
-          {(Object.entries(EXAMPLES) as [ExampleId, { label: string }][]).map(([id, ex]) => (
-            <button
-              key={id}
-              type="button"
-              className={exampleId === id ? 'active-example' : ''}
-              onClick={() => loadExample(id)}
-            >
-              {ex.label}
-            </button>
-          ))}
+          <Link to="/editor" className="btn-link primary-link">
+            地图编辑器
+          </Link>
+          <button type="button" onClick={loadTemplate}>
+            加载空白模板
+          </button>
           <button type="button" onClick={runLint}>校验</button>
           <button type="button" className="primary" onClick={runPlay}>播放</button>
         </div>

@@ -1,0 +1,25 @@
+---
+title: 空白剧本
+theme: 待写
+synopsis: |
+  这是空白模板。地图由编辑器绘制并导出后，在此仅使用 @SCENE、@ENTER、@MOVE_TO 等指令，
+  引用地图上已有的人行道与物件，不要使用 @SPAWN_PROP、@LAYOUT、@SPAWN_WALKWAY。
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+tags: [模板]
+cast: []
+scenes: [plaza]
+acts: 1
+duration_estimate: 60
+tone: 待写
+author: author
+language: zh-CN
+---
+
+@BEGIN title="空白剧本"
+
+@ACT id=1 title="第一幕"
+
+@SCENE id=plaza time=evening weather=clear
+
+@END_SCRIPT

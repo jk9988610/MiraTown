@@ -17,6 +17,7 @@ export * from './walkway.js';
 export * from './abreast.js';
 export * from './layout.js';
 export * from './camera.js';
+export * from './mapExport.js';
 
 export function processScript(source: string) {
   const catalog = loadEmbeddedCatalog();

@@ -254,3 +254,129 @@ textarea {
   padding: 0.75rem 1rem;
   border-radius: 8px;
 }
+
+a.btn-link,
+.primary-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #2d3b4d;
+  text-decoration: none;
+  color: inherit;
+  background: #1c2733;
+}
+
+a.btn-link:hover,
+.primary-link:hover {
+  background: #243040;
+}
+
+a.primary-link {
+  background: #2f6fed;
+  border-color: #2f6fed;
+}
+
+.map-editor {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.map-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.map-editor-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.map-editor-panel {
+  background: #151c24;
+  border: 1px solid #2d3b4d;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.map-editor-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  color: #9ab0c8;
+}
+
+.map-editor-panel select,
+.map-editor-panel input {
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #2d3b4d;
+  background: #0f1419;
+  color: inherit;
+}
+
+.tool-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tool-row button.active {
+  border-color: #2f6fed;
+  background: #1a3058;
+}
+
+.field {
+  display: block;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #8b9bb0;
+  margin: 0.5rem 0 0;
+  line-height: 1.4;
+}
+
+.map-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.map-item-list button {
+  width: 100%;
+  text-align: left;
+  margin-bottom: 0.25rem;
+  font-size: 0.82rem;
+}
+
+.map-item-list button.sel {
+  border-color: #2f6fed;
+}
+
+.map-editor-canvas-wrap {
+  overflow: auto;
+  border: 1px solid #2d3b4d;
+  border-radius: 10px;
+  background: #0a0e12;
+}
+
+.map-editor-canvas {
+  display: block;
+  cursor: crosshair;
+}

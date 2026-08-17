@@ -3,6 +3,7 @@ import type {
   ActorDef,
   CameraPresetDef,
   Catalog,
+  MapObjectDef,
   PropDef,
   SceneDef,
   SceneLayoutDef,
@@ -16,9 +17,10 @@ interface RawCatalog {
   props: PropDef[];
   scenes: SceneDef[];
   camera_presets: CameraPresetDef[];
-  zones: ZoneDef[];
+  zones?: ZoneDef[];
   walkways?: WalkwayDef[];
   scene_layouts?: SceneLayoutDef[];
+  map_objects?: MapObjectDef[];
 }
 
 function toMap<T extends { id: string }>(items: T[]): Map<string, T> {
@@ -32,9 +34,10 @@ export function loadCatalogFromObject(raw: RawCatalog): Catalog {
     props: toMap(raw.props),
     scenes: toMap(raw.scenes),
     camera_presets: toMap(raw.camera_presets),
-    zones: toMap(raw.zones),
+    zones: toMap(raw.zones ?? []),
     walkways: toMap(raw.walkways ?? []),
     scene_layouts: toMap(raw.scene_layouts ?? []),
+    map_objects: toMap(raw.map_objects ?? []),
   };
 }
 
@@ -215,90 +218,13 @@ camera_presets:
     offset: { x: 0, y: 0.5 }
     mode: follow
 
-zones:
-  - id: plaza_center
-    scene: plaza
-    rect: { x: 26, y: 20, w: 12, h: 8 }
-  - id: plaza_bench
-    scene: plaza
-    rect: { x: 8, y: 6, w: 3, h: 2 }
+zones: []
 
-walkways:
-  - id: plaza_rain_path
-    scene: plaza
-    points:
-      - { x: 10, y: 5.85 }
-      - { x: 28, y: 5.85 }
-    width: 1.2
-    visible_default: true
-  - id: plaza_rain_lane_left
-    scene: plaza
-    points:
-      - { x: 10, y: 5.55 }
-      - { x: 19.5, y: 5.55 }
-    width: 1.2
-    visible_default: true
-  - id: plaza_rain_lane_right
-    scene: plaza
-    points:
-      - { x: 10, y: 6.15 }
-      - { x: 20.5, y: 6.15 }
-    width: 1.2
-    visible_default: true
-  - id: plaza_rain_north_left
-    scene: plaza
-    points:
-      - { x: 19.5, y: 5.55 }
-      - { x: 19.5, y: 10 }
-    width: 1.2
-    visible_default: true
-  - id: plaza_rain_north_right
-    scene: plaza
-    points:
-      - { x: 20.5, y: 6.15 }
-      - { x: 20.5, y: 10 }
-    width: 1.2
-    visible_default: true
-  - id: rain_west_lane_left
-    scene: plaza
-    points:
-      - { x: 19.5, y: 10 }
-      - { x: 5, y: 10 }
-    width: 1.2
-    visible_default: true
-  - id: rain_west_lane_right
-    scene: plaza
-    points:
-      - { x: 20.5, y: 10 }
-      - { x: 6, y: 10 }
-    width: 1.2
-    visible_default: true
-  - id: shop_interior_aisle
-    scene: supermarket_interior
-    points:
-      - { x: 5, y: 2 }
-      - { x: 5, y: 8 }
-    width: 1.0
-    visible_default: true
+walkways: []
 
-scene_layouts:
-  - id: plaza_rain_row
-    scene: plaza
-    walkway_id: plaza_rain_path
-    sidewalk_center_y: 5.85
-    sidewalk_width: 1.2
-    lamps:
-      - { id: lamp_1, x: 12 }
-      - { id: lamp_2, x: 22 }
-    bench: { id: bench_1, x: 11 }
-  - id: plaza_main_row
-    scene: plaza
-    walkway_id: plaza_main_path
-    sidewalk_center_y: 25.85
-    sidewalk_width: 1.2
-    lamps:
-      - { id: lamp_1, x: 32 }
-    bench: { id: bench_1, x: 34 }
+map_objects: []
+
+scene_layouts: []
 `;
 
 export function loadEmbeddedCatalog(): Catalog {

@@ -124,6 +124,15 @@ export interface SceneLayoutDef {
   bench: { id: string; x: number };
 }
 
+export interface MapObjectDef {
+  id: string;
+  scene: string;
+  prop: string;
+  x: number;
+  y: number;
+  state?: string;
+}
+
 export interface Catalog {
   catalog_version: string;
   actors: Map<string, ActorDef>;
@@ -133,6 +142,7 @@ export interface Catalog {
   zones: Map<string, ZoneDef>;
   walkways: Map<string, WalkwayDef>;
   scene_layouts: Map<string, SceneLayoutDef>;
+  map_objects: Map<string, MapObjectDef>;
 }
 
 export type IROp =

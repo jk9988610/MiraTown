@@ -582,12 +582,15 @@ export class Runtime {
         this.t = 0;
         this.scriptWalkways.clear();
         this.walkwayVisibility.clear();
-        this.activateCatalogWalkways();
         for (const [id, prop] of [...this.props.entries()]) {
-          if (!prop.attach || !this.actors.has(prop.attach)) {
+          if (prop.attach) {
+            if (!this.actors.has(prop.attach)) this.props.delete(id);
+          } else {
             this.props.delete(id);
           }
         }
+        this.activateCatalogWalkways();
+        this.activateCatalogMapObjects();
         this.snapCameraToActors();
         this.log('scene_change', { scene: this.sceneId, weather: this.weather }, node.line);
         break;
@@ -917,6 +920,23 @@ export class Runtime {
       if (def.scene === this.sceneId) {
         this.walkwayVisibility.set(def.id, def.visible_default);
       }
+    }
+  }
+
+  private activateCatalogMapObjects(): void {
+    if (!this.sceneId) return;
+    for (const def of this.catalog.map_objects.values()) {
+      if (def.scene !== this.sceneId) continue;
+      const propDef = this.catalog.props.get(def.prop);
+      this.props.set(def.id, {
+        id: def.id,
+        prop: def.prop,
+        x: def.x,
+        y: def.y,
+        state: def.state ?? propDef?.states[0] ?? 'empty',
+        offsetX: 0,
+        offsetY: 0,
+      });
     }
   }
 

@@ -316,6 +316,17 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
         pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SPAWN_PROP 缺少 prop' });
         break;
       }
+      const attach = asString(params.attach);
+      const at = asVec2(params.at);
+      if (at && !attach) {
+        pushIssue(ctx, {
+          code: 'W_SCRIPT_MAP_OBJECT',
+          level: 'warning',
+          line,
+          message: '地图物件应在地图编辑器中摆放，剧本请使用地图上已有的 id',
+          suggestion: '使用 @SET_PROP / @GIVE 等引用 map_objects，勿 @SPAWN_PROP at=',
+        });
+      }
       const def = catalog.props.get(prop);
       if (!def) {
         pushIssue(ctx, { code: 'E_UNKNOWN_PROP', line, message: `未知道具 ${prop}` });
@@ -324,8 +335,6 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       if (!def.placeable || prop === 'letter') {
         pushIssue(ctx, { code: 'E_PROP_NOT_PLACEABLE', line, message: `道具 ${prop} 不可放置` });
       }
-      const at = asVec2(params.at);
-      const attach = asString(params.attach);
       if (!at && !attach) {
         pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@SPAWN_PROP 需要 at 或 attach' });
       }
@@ -359,6 +368,12 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       break;
     }
     case 'LAYOUT': {
+      pushIssue(ctx, {
+        code: 'W_SCRIPT_USE_MAP',
+        level: 'warning',
+        line,
+        message: '@LAYOUT 已弃用：请在地图编辑器中摆放路灯、长椅等物件',
+      });
       const layoutId = asString(params.id);
       if (!layoutId) {
         pushIssue(ctx, { code: 'E_MISSING_PARAM', line, message: '@LAYOUT 缺少 id' });
@@ -383,6 +398,12 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
       break;
     }
     case 'SPAWN_WALKWAY': {
+      pushIssue(ctx, {
+        code: 'W_SCRIPT_USE_MAP',
+        level: 'warning',
+        line,
+        message: '人行道应在地图编辑器中绘制，剧本请使用 catalog walkways 的 to_path',
+      });
       const id = asString(params.id);
       const from = asVec2(params.from);
       const to = asVec2(params.to);

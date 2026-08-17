@@ -6,19 +6,21 @@ import { compileScript, lintScript, parseScript, Runtime } from './index.js';
 import { pickNearestSeat } from './abreast.js';
 import type { WalkwayDef } from './types.js';
 import { interpolateWalkwayMove, walkwayMoveDistance } from './walkway.js';
+import { loadCatalogFromObject } from './catalog.js';
 import { loadDefaultCatalog } from './catalog-node.js';
+import { serializeMapExport, validateStraightWalkway } from './mapExport.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const examplePath = join(here, '../../../examples/minimal-play.mira');
+const examplePath = join(here, '../../../examples/template.mira');
 const exampleSource = readFileSync(examplePath, 'utf8');
 
-describe('minimal-play.mira', () => {
+describe('template.mira', () => {
   const catalog = loadDefaultCatalog();
 
   it('parses front matter and body', () => {
     const ast = parseScript(exampleSource);
-    expect(ast.frontMatter.title).toBe('雨夜的告白');
-    expect(ast.body.length).toBeGreaterThan(5);
+    expect(ast.frontMatter.title).toBe('空白剧本');
+    expect(ast.body.length).toBeGreaterThan(2);
   });
 
   it('passes linter', () => {
@@ -35,7 +37,6 @@ describe('minimal-play.mira', () => {
     const snapshot = runtime.runToCompletion();
     expect(snapshot.error).toBeUndefined();
     expect(snapshot.completed).toBe(true);
-    expect(snapshot.actors.length).toBe(2);
   });
 });
 
@@ -69,20 +70,78 @@ duration_estimate: 30
   });
 });
 
-describe('simple-walk.mira', () => {
-  const catalog = loadDefaultCatalog();
-  const simplePath = join(here, '../../../examples/simple-walk.mira');
-  const simpleSource = readFileSync(simplePath, 'utf8');
-
-  it('passes linter and runs', () => {
-    const ast = parseScript(simpleSource);
-    const report = lintScript(ast, catalog);
-    expect(report.passed, JSON.stringify(report.errors)).toBe(true);
+describe('map_objects', () => {
+  it('loads catalog map_objects on @SCENE without @SPAWN_PROP at=', () => {
+    const base = loadDefaultCatalog();
+    const catalog = loadCatalogFromObject({
+      catalog_version: base.catalog_version,
+      actors: [...base.actors.values()],
+      props: [...base.props.values()],
+      scenes: [...base.scenes.values()],
+      camera_presets: [...base.camera_presets.values()],
+      zones: [...base.zones.values()],
+      walkways: [],
+      scene_layouts: [],
+      map_objects: [
+        { id: 'bench_1', scene: 'plaza', prop: 'bench', x: 5, y: 5, state: 'empty' },
+      ],
+    });
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(10, 8)
+@END_SCRIPT`;
+    const ast = parseScript(source);
     const runtime = new Runtime(catalog);
     runtime.load(compileScript(ast));
     const snapshot = runtime.runToCompletion();
-    expect(snapshot.error).toBeUndefined();
-    expect(snapshot.completed).toBe(true);
+    expect(snapshot.props.some((p) => p.id === 'bench_1')).toBe(true);
+  });
+});
+
+describe('mapExport', () => {
+  it('serializes walkways and map objects', () => {
+    const yaml = serializeMapExport({
+      export_version: '1.0',
+      catalog_version: '1.0.0',
+      exported_at: '2026-01-01T00:00:00.000Z',
+      note: 'test',
+      scenes: [{ id: 'plaza', display_name: '广场', width: 64, height: 48, default_camera: 'cam_wide', env: {} }],
+      walkways: [
+        {
+          id: 'w1',
+          scene: 'plaza',
+          points: [
+            { x: 0, y: 10 },
+            { x: 20, y: 10 },
+          ],
+          width: 1.2,
+          visible_default: true,
+        },
+      ],
+      map_objects: [{ id: 'lamp_1', scene: 'plaza', prop: 'lamp_post', x: 5, y: 5 }],
+    });
+    expect(yaml).toContain('walkways:');
+    expect(yaml).toContain('map_objects:');
+    expect(yaml).toContain('lamp_1');
+  });
+
+  it('rejects diagonal walkways', () => {
+    expect(
+      validateStraightWalkway([
+        { x: 0, y: 0 },
+        { x: 5, y: 5 },
+      ]),
+    ).toBeTruthy();
   });
 });
 
@@ -198,6 +257,59 @@ describe('walkways', () => {
   const spawnRainPath = `@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2`;
 
   it('loads catalog walkways on scene enter without SPAWN_WALKWAY', () => {
+    const base = loadDefaultCatalog();
+    const catalog = loadCatalogFromObject({
+      catalog_version: base.catalog_version,
+      actors: [...base.actors.values()],
+      props: [...base.props.values()],
+      scenes: [...base.scenes.values()],
+      camera_presets: [...base.camera_presets.values()],
+      zones: [...base.zones.values()],
+      scene_layouts: [],
+      map_objects: [],
+      walkways: [
+        {
+          id: 'plaza_rain_path',
+          scene: 'plaza',
+          points: [
+            { x: 10, y: 5.85 },
+            { x: 28, y: 5.85 },
+          ],
+          width: 1.2,
+          visible_default: true,
+        },
+        {
+          id: 'plaza_rain_lane_left',
+          scene: 'plaza',
+          points: [
+            { x: 10, y: 5.55 },
+            { x: 28, y: 5.55 },
+          ],
+          width: 1.2,
+          visible_default: true,
+        },
+        {
+          id: 'plaza_rain_north_left',
+          scene: 'plaza',
+          points: [
+            { x: 19.5, y: 6.45 },
+            { x: 19.5, y: 10 },
+          ],
+          width: 1.2,
+          visible_default: true,
+        },
+        {
+          id: 'rain_west_lane_left',
+          scene: 'plaza',
+          points: [
+            { x: 8, y: 5.85 },
+            { x: 8, y: 12 },
+          ],
+          width: 1.2,
+          visible_default: true,
+        },
+      ],
+    });
     const source = `---
 title: t
 theme: x
@@ -549,7 +661,7 @@ duration_estimate: 30
 describe('layout directive', () => {
   const catalog = loadDefaultCatalog();
 
-  it('spawns props from scene layout', () => {
+  it('warns when script uses @LAYOUT', () => {
     const source = `---
 title: t
 theme: x
@@ -565,14 +677,8 @@ duration_estimate: 30
 @LAYOUT id=plaza_main_row
 @END_SCRIPT`;
     const ast = parseScript(source);
-    const runtime = new Runtime(catalog);
-    runtime.load(compileScript(ast));
-    const snapshot = runtime.runToCompletion();
-    const lamp = snapshot.props.find((p) => p.id === 'lamp_1');
-    const bench = snapshot.props.find((p) => p.id === 'bench_1');
-    expect(lamp?.y).toBeCloseTo(26.45, 2);
-    expect(bench?.y).toBeCloseTo(26.45, 2);
-    expect(lamp?.x).toBeCloseTo(32, 1);
-    expect(bench?.x).toBeCloseTo(34, 1);
+    const report = lintScript(ast, catalog);
+    expect(report.warnings.some((e) => e.code === 'W_SCRIPT_USE_MAP')).toBe(true);
+    expect(report.errors.some((e) => e.code === 'E_UNKNOWN_LAYOUT')).toBe(true);
   });
 });
