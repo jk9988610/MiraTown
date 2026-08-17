@@ -12,6 +12,11 @@ npm run dev
 
 浏览器访问 **`/editor`**。播放页 `/` 顶部有「地图编辑器」链接。
 
+**GitHub Pages**（合并到 `main` 后自动部署）：
+
+- 播放页：<https://jk9988610.github.io/MiraTown/>
+- 地图编辑器：<https://jk9988610.github.io/MiraTown/editor>
+
 ## 绘制规范
 
 | 项目 | 说明 |

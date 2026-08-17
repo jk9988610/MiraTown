@@ -10,7 +10,14 @@ AI 导演驱动的网页演绎游戏：严格数学空间 + DSL 剧本 + 程序�
 
 ## 参考剧本
 
-[examples/minimal-play.mira](examples/minimal-play.mira) — MVP 验收样例（雨夜广场，米拉与陈伯）
+[examples/template.mira](examples/template.mira) — 空白模板（地图由编辑器绘制后编写剧本）
+
+## 地图编辑器
+
+在浏览器中绘制人行道与物件，导出 YAML 融入项目。详见 **[docs/map-editor.md](docs/map-editor.md)**。
+
+- 本地：`npm run dev` → `/editor`
+- Pages：<https://jk9988610.github.io/MiraTown/editor>
 
 ## 实体目录
 
@@ -25,7 +32,10 @@ npm test -w @miratown/core
 npm run build        # 构建（Pages 由 Actions 自动部署）
 ```
 
-在线演示（GitHub Pages）：https://jk9988610.github.io/MiraTown/
+在线演示（GitHub Pages）：
+
+- 播放：<https://jk9988610.github.io/MiraTown/>
+- 地图编辑器：<https://jk9988610.github.io/MiraTown/editor>
 
 ### Termux 环境
 
@@ -48,7 +58,8 @@ npm install      # package-lock 有变时再执行
 ## 状态
 
 **S3 已实现**：PixiJS 渲染（广场、角色、道具、镜头、对话气泡）。  
-在线演示：https://jk9988610.github.io/MiraTown/（push `main` 自动部署）
+**地图编辑器**：`/editor` 绘制布局并导出 YAML。  
+在线演示（push `main` 自动部署）：[播放](https://jk9988610.github.io/MiraTown/) · [地图编辑器](https://jk9988610.github.io/MiraTown/editor)
 
 ## 三条铁律
 
