@@ -197,6 +197,31 @@ describe('walkways', () => {
   const catalog = loadDefaultCatalog();
   const spawnRainPath = `@SPAWN_WALKWAY id=plaza_rain_path from=(10, 5.85) to=(28, 5.85) width=1.2`;
 
+  it('loads catalog walkways on scene enter without SPAWN_WALKWAY', () => {
+    const source = `---
+title: t
+theme: x
+synopsis: 一二三四五六七八九十十一十二十三十四十五
+dsl_version: "1.0"
+catalog_version: "1.0.0"
+cast: [mira]
+scenes: [plaza]
+duration_estimate: 30
+---
+@BEGIN
+@SCENE id=plaza
+@ENTER actor=mira at=(10, 5.85)
+@END_SCRIPT`;
+    const ast = parseScript(source);
+    const runtime = new Runtime(catalog);
+    runtime.load(compileScript(ast));
+    const snapshot = runtime.runToCompletion();
+    const ids = snapshot.walkways.map((w) => w.id);
+    expect(ids).toContain('plaza_rain_path');
+    expect(ids).toContain('plaza_rain_lane_left');
+    expect(ids).toContain('rain_west_lane_left');
+  });
+
   it('moves actor along walkway path', () => {
     const source = `---
 title: t

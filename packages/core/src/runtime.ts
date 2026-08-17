@@ -582,6 +582,7 @@ export class Runtime {
         this.t = 0;
         this.scriptWalkways.clear();
         this.walkwayVisibility.clear();
+        this.activateCatalogWalkways();
         for (const [id, prop] of [...this.props.entries()]) {
           if (!prop.attach || !this.actors.has(prop.attach)) {
             this.props.delete(id);
@@ -884,7 +885,7 @@ export class Runtime {
   }
 
   private sidewalkCenterNear(x: number): number | null {
-    for (const w of this.scriptWalkways.values()) {
+    for (const w of this.iterActiveWalkways()) {
       const xs = w.points.map((p) => p.x);
       const minX = Math.min(...xs);
       const maxX = Math.max(...xs);
@@ -893,6 +894,30 @@ export class Runtime {
       }
     }
     return null;
+  }
+
+  /** 当前场景 catalog 人行道 + 剧本临时人行道 */
+  private *iterActiveWalkways(): Generator<WalkwayDef> {
+    const seen = new Set<string>();
+    for (const def of this.scriptWalkways.values()) {
+      seen.add(def.id);
+      yield def;
+    }
+    if (!this.sceneId) return;
+    for (const def of this.catalog.walkways.values()) {
+      if (def.scene === this.sceneId && !seen.has(def.id)) {
+        yield def;
+      }
+    }
+  }
+
+  private activateCatalogWalkways(): void {
+    if (!this.sceneId) return;
+    for (const def of this.catalog.walkways.values()) {
+      if (def.scene === this.sceneId) {
+        this.walkwayVisibility.set(def.id, def.visible_default);
+      }
+    }
   }
 
   private initWalkwayVisibility(): void {
@@ -909,10 +934,10 @@ export class Runtime {
     width: number;
   }> {
     const items: Array<{ id: string; visible: boolean; points: Vec2[]; width: number }> = [];
-    for (const [id, def] of this.scriptWalkways) {
+    for (const def of this.iterActiveWalkways()) {
       items.push({
-        id,
-        visible: this.walkwayVisibility.get(id) ?? true,
+        id: def.id,
+        visible: this.walkwayVisibility.get(def.id) ?? def.visible_default,
         points: def.points,
         width: def.width,
       });

@@ -398,6 +398,15 @@ function lintDirective(catalog: Catalog, ctx: LintContext, node: DirectiveNode):
         pushIssue(ctx, { code: 'E_DUPLICATE_WALKWAY', line, message: `人行道 ${id} 已在本场景 spawn` });
         break;
       }
+      if (catalog.walkways.has(id)) {
+        pushIssue(ctx, {
+          code: 'W_CATALOG_WALKWAY',
+          level: 'warning',
+          line,
+          message: `人行道 ${id} 已在 catalog 定义，无需 @SPAWN_WALKWAY`,
+          suggestion: '将路网移入 catalog/entities.yaml，剧本仅用 @MOVE_TO to_path',
+        });
+      }
       const width = asNumber(params.width) ?? SIDEWALK_WIDTH;
       if (width <= 0) {
         pushIssue(ctx, { code: 'E_INVALID_PARAM', line, message: '@SPAWN_WALKWAY width 须为正数' });

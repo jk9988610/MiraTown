@@ -272,6 +272,17 @@ DSL 是 AI 与程序之间的**唯一协议**。AI 必须使用本文定义的�
 
 禁止对 attach 道具使用 `offset`（持伞侧须在 `@SPAWN_PROP` 时固定为 `0.4`）。
 
+#### 人行道路网
+
+场景固定人行道定义在 catalog [`walkways`](../catalog/entities.yaml)，`@SCENE` 进入时自动加载，剧本通常**无需** `@SPAWN_WALKWAY`。命名、并行走位与路口拓扑见 [`walkway-conventions.md`](./walkway-conventions.md)。
+
+```
+# 剧本只写移动意图
+@MOVE_TO actor=mira to_path=plaza_rain_lane_left x=20
+```
+
+`@SPAWN_WALKWAY` 仍可用于临时路网或测试；若 id 与 catalog 重复，linter 警告 `W_CATALOG_WALKWAY`。
+
 #### `@SET_WALKWAY`
 控制人行道显隐（渲染层）。
 

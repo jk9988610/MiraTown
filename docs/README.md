@@ -12,6 +12,7 @@
 | 查坐标/时间/镜头数学 | [`01-world-model.md`](./01-world-model.md) |
 | 查角色/道具/场景 ID | [`02-entity-catalog.md`](./02-entity-catalog.md) + [`catalog/entities.yaml`](../catalog/entities.yaml) |
 | 写/校验 DSL 指令 | [`03-script-dsl.md`](./03-script-dsl.md) |
+| 人行道命名与并行走位 | [`walkway-conventions.md`](./walkway-conventions.md) |
 | 写剧本文件 | [`04-script-format.md`](./04-script-format.md) + [`examples/minimal-play.mira`](../examples/minimal-play.mira) |
 | 实现引擎逻辑 | [`05-runtime-semantics.md`](./05-runtime-semantics.md) |
 | 接 AI API | [`06-ai-api-contract.md`](./06-ai-api-contract.md) |

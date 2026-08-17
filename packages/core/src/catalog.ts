@@ -215,6 +215,50 @@ zones:
     scene: plaza
     rect: { x: 8, y: 6, w: 3, h: 2 }
 
+walkways:
+  - id: plaza_rain_path
+    scene: plaza
+    points:
+      - { x: 10, y: 5.85 }
+      - { x: 28, y: 5.85 }
+    width: 1.2
+    visible_default: true
+  - id: plaza_rain_lane_left
+    scene: plaza
+    points:
+      - { x: 10, y: 5.55 }
+      - { x: 19.5, y: 10 }
+    width: 1.2
+    visible_default: true
+  - id: plaza_rain_lane_right
+    scene: plaza
+    points:
+      - { x: 10, y: 6.15 }
+      - { x: 20.5, y: 10 }
+    width: 1.2
+    visible_default: true
+  - id: rain_west_lane_left
+    scene: plaza
+    points:
+      - { x: 19.5, y: 10 }
+      - { x: 5, y: 10 }
+    width: 1.2
+    visible_default: true
+  - id: rain_west_lane_right
+    scene: plaza
+    points:
+      - { x: 20.5, y: 10 }
+      - { x: 6, y: 10 }
+    width: 1.2
+    visible_default: true
+  - id: shop_interior_aisle
+    scene: supermarket_interior
+    points:
+      - { x: 6, y: 2 }
+      - { x: 6, y: 8 }
+    width: 1.0
+    visible_default: true
+
 scene_layouts:
   - id: plaza_rain_row
     scene: plaza
