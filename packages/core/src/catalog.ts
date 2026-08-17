@@ -160,6 +160,14 @@ props:
     placeable: true
     states: [open, closed]
     tags: [家具]
+  - id: street_sign
+    display_name: 路牌
+    width: 0.8
+    height: 1.6
+    anchor: foot
+    placeable: true
+    states: [plaza_row, north_road, west_road]
+    tags: [街道]
 
 scenes:
   - id: plaza
@@ -227,13 +235,27 @@ walkways:
     scene: plaza
     points:
       - { x: 10, y: 5.55 }
-      - { x: 19.5, y: 10 }
+      - { x: 19.5, y: 5.55 }
     width: 1.2
     visible_default: true
   - id: plaza_rain_lane_right
     scene: plaza
     points:
       - { x: 10, y: 6.15 }
+      - { x: 20.5, y: 6.15 }
+    width: 1.2
+    visible_default: true
+  - id: plaza_rain_north_left
+    scene: plaza
+    points:
+      - { x: 19.5, y: 5.55 }
+      - { x: 19.5, y: 10 }
+    width: 1.2
+    visible_default: true
+  - id: plaza_rain_north_right
+    scene: plaza
+    points:
+      - { x: 20.5, y: 6.15 }
       - { x: 20.5, y: 10 }
     width: 1.2
     visible_default: true
@@ -254,8 +276,8 @@ walkways:
   - id: shop_interior_aisle
     scene: supermarket_interior
     points:
-      - { x: 6, y: 2 }
-      - { x: 6, y: 8 }
+      - { x: 5, y: 2 }
+      - { x: 5, y: 8 }
     width: 1.0
     visible_default: true
 

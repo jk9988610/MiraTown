@@ -1,4 +1,4 @@
-import { Application, Container, Graphics } from 'pixi.js';
+import { Application, Container, Graphics, Text } from 'pixi.js';
 import {
   clampCamera,
   loadEmbeddedCatalog,
@@ -28,6 +28,12 @@ const SKIN = 0xffe0bd;
 const SKIN_SHADOW = 0xe8c9a8;
 const UMBRELLA_CANOPY = 0xc8ccd4;
 const UMBRELLA_EDGE = 0x9aa3b0;
+
+const STREET_SIGN_LABELS: Record<string, string> = {
+  plaza_row: '广场东路',
+  north_road: '北路',
+  west_road: '西路',
+};
 const UMBRELLA_POLE = 0x7a8088;
 
 type Facing = 'north' | 'south' | 'east' | 'west';
@@ -170,6 +176,8 @@ interface DepthItem {
   id: string;
   sortY: number;
   draw: (g: Graphics) => void;
+  label?: string;
+  labelPos?: { x: number; y: number };
 }
 
 export class MiraStage {
@@ -184,6 +192,7 @@ export class MiraStage {
   private depthLayer = new Container();
   private rainLayer = new Container();
   private depthGfx = new Map<string, Graphics>();
+  private depthLabels = new Map<string, Text>();
   private overlayEl: HTMLElement | null = null;
   private weather: 'clear' | 'rain' = 'clear';
   private mapW = 64;
@@ -219,6 +228,7 @@ export class MiraStage {
     this.depthLayer = new Container();
     this.rainLayer = new Container();
     this.depthGfx.clear();
+    this.depthLabels.clear();
     const app = new Application();
     await app.init({
       width: VIEW_W,
@@ -262,6 +272,8 @@ export class MiraStage {
     this.mountGeneration += 1;
     this.mounted = false;
     this.depthGfx.clear();
+    for (const txt of this.depthLabels.values()) txt.destroy();
+    this.depthLabels.clear();
     this.app?.destroy(true, { children: true });
     this.app = null;
     this.overlayEl = null;
@@ -520,6 +532,18 @@ export class MiraStage {
         });
         continue;
       }
+
+      if (prop.prop === 'street_sign') {
+        const label = STREET_SIGN_LABELS[prop.state] ?? prop.state;
+        items.push({
+          id: `prop:${prop.id}`,
+          sortY: depthSortKey(prop.y, -0.05),
+          draw: (g) => this.drawStreetSignPost(g, prop.x, prop.y),
+          label,
+          labelPos: { x: prop.x, y: prop.y },
+        });
+        continue;
+      }
     }
 
     for (const actor of snapshot.actors) {
@@ -549,12 +573,35 @@ export class MiraStage {
       gfx.clear();
       item.draw(gfx);
       this.depthLayer.addChild(gfx);
+      if (item.label && item.labelPos) {
+        let txt = this.depthLabels.get(item.id);
+        if (!txt) {
+          txt = new Text({
+            text: item.label,
+            style: { fontFamily: 'sans-serif', fontSize: 11, fill: 0x1a2830, fontWeight: '600' },
+          });
+          this.depthLabels.set(item.id, txt);
+        } else {
+          txt.text = item.label;
+        }
+        const base = footRect(this.mapH, item.labelPos.x, item.labelPos.y, 0.01, 0.01);
+        const signH = this.propSize('street_sign').h * PX_PER_WU;
+        txt.x = base.centerX - txt.width / 2;
+        txt.y = base.groundY - signH - 4;
+        this.depthLayer.addChild(txt);
+      }
     }
 
     for (const [id, gfx] of this.depthGfx) {
       if (!seen.has(id)) {
         gfx.destroy();
         this.depthGfx.delete(id);
+      }
+    }
+    for (const [id, txt] of this.depthLabels) {
+      if (!seen.has(id)) {
+        txt.destroy();
+        this.depthLabels.delete(id);
       }
     }
   }
@@ -610,23 +657,23 @@ export class MiraStage {
     g.rect(r.left + 6, r.top + r.height * 0.45, r.width - 12, 8);
     g.fill(0x8a7a68);
     if (stocked) {
-      const scarfW = this.propSize('scarf').w * PX_PER_WU;
-      const scarfY = r.top + r.height * 0.2;
+      const scarfW = this.propSize('scarf').w * PX_PER_WU * 0.75;
+      const scarfY = r.top + r.height * 0.22;
       g.moveTo(r.centerX - scarfW * 0.3, scarfY);
       g.bezierCurveTo(
-        r.centerX - scarfW * 0.45,
-        scarfY + 14,
-        r.centerX - scarfW * 0.15,
-        scarfY + 28,
+        r.centerX - scarfW * 0.4,
+        scarfY + 8,
+        r.centerX - scarfW * 0.12,
+        scarfY + 16,
         r.centerX,
-        scarfY + 32,
+        scarfY + 18,
       );
       g.bezierCurveTo(
-        r.centerX + scarfW * 0.2,
-        scarfY + 22,
-        r.centerX + scarfW * 0.35,
-        scarfY + 8,
-        r.centerX + scarfW * 0.25,
+        r.centerX + scarfW * 0.18,
+        scarfY + 12,
+        r.centerX + scarfW * 0.28,
+        scarfY + 4,
+        r.centerX + scarfW * 0.22,
         scarfY,
       );
       g.fill(0xc94e6a);
@@ -664,12 +711,24 @@ export class MiraStage {
       cx = base.centerX;
       neckY = base.groundY - holderSize.h * PX_PER_WU * 0.55;
     }
-    const w = this.propSize('scarf').w * PX_PER_WU;
+    const w = this.propSize('scarf').w * PX_PER_WU * 0.75;
     g.moveTo(cx - w * 0.35, neckY);
-    g.bezierCurveTo(cx - w * 0.5, neckY + 18, cx - w * 0.2, neckY + 36, cx, neckY + 42);
-    g.bezierCurveTo(cx + w * 0.25, neckY + 30, cx + w * 0.4, neckY + 12, cx + w * 0.3, neckY);
+    g.bezierCurveTo(cx - w * 0.45, neckY + 10, cx - w * 0.18, neckY + 20, cx, neckY + 24);
+    g.bezierCurveTo(cx + w * 0.2, neckY + 16, cx + w * 0.32, neckY + 6, cx + w * 0.28, neckY);
     g.fill(0xc94e6a);
-    g.stroke({ width: 2, color: 0xa83d58 });
+    g.stroke({ width: 1.5, color: 0xa83d58 });
+  }
+
+  private drawStreetSignPost(g: Graphics, x: number, y: number): void {
+    const size = this.propSize('street_sign');
+    const r = footRect(this.mapH, x, y, size.w, size.h);
+    g.rect(r.centerX - 3, r.top + r.height * 0.35, 6, r.height * 0.65);
+    g.fill(0x5a5048);
+    const boardW = Math.max(44, size.w * PX_PER_WU * 1.6);
+    const boardH = 22;
+    g.roundRect(r.centerX - boardW / 2, r.top + 2, boardW, boardH, 3);
+    g.fill(0xf0e6c8);
+    g.stroke({ width: 1.5, color: 0x8a7a58 });
   }
 
   private drawBench(g: Graphics, x: number, y: number): void {
